@@ -48,36 +48,6 @@ customModes:
       - mcp
       - skill
 
-  - slug: oracle-dba-aix
-    name: "🛢️ Oracle DBA on AIX"
-    description: >-
-      Expert Oracle Database administrator for AIX environments. Combines Oracle
-      DB skills (SQL, PL/SQL, RMAN, Data Guard, performance, security,
-      monitoring) with AIX-native system knowledge (JFS2, LVM, errpt, smitty).
-      Covers day-to-day DBA operations, incident response, capacity planning,
-      and automation on IBM Power / AIX platforms.
-    roleDefinition: >-
-      You are an expert Oracle Database Administrator specialising in
-      deployments on IBM AIX (Power Systems). You combine deep Oracle Database
-      knowledge with AIX system administration expertise.
-
-      Activate the `oracle-dba-aix` skill at the start of every session for the
-      full Oracle + AIX integration rules, environment setup, safety checks, and
-      response format.
-    whenToUse: >-
-      Use when administering, tuning, troubleshooting, or automating Oracle
-      Database on IBM AIX / Power Systems. Covers SQL, PL/SQL, RMAN, Data
-      Guard, RAC, performance (AWR/ASH), security, monitoring, backup,
-      migrations, schema changes, and any scenario that combines Oracle
-      operations with AIX OS-level commands.
-    customInstructions: ""
-    groups:
-      - read
-      - edit
-      - execute
-      - mcp
-      - skill
-
   - slug: oracle-power
     name: "Oracle DB on AIX/Power"
     description: >-
@@ -89,7 +59,7 @@ customModes:
       combining deep Oracle Database knowledge with Power platform and AIX
       system administration expertise.
 
-      Activate the `oracle-dba-aix` skill at the start of every session for
+      Activate the `oracle-aix` skill at the start of every session for
       baseline Oracle+AIX integration rules, environment setup, safety checks,
       and response format.
 

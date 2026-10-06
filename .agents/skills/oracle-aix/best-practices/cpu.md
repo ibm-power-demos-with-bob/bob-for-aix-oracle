@@ -12,7 +12,6 @@ description: >-
 # Oracle Power CPU Tuning
 
 Expert guidance for CPU and LPAR configuration for Oracle Database on IBM Power Systems.
-Source: IBM Power Systems VUG May 2024 sessions by Ralf Schmidt-Dannert, IBM ATG Principal Power Specialist.
 
 ---
 
@@ -248,7 +247,7 @@ lparstat -i
 
 ## 9. IBM Power11 — CPU Tuning Notes
 
-Power11 was announced in October 2024. The VUG source material (May 2024) predates this announcement. The following reflects IBM public product information as of the skill's last update.
+Power11 was announced in October 2024. The following reflects IBM public product information.
 
 ### Confirmed for Power11
 
@@ -260,7 +259,7 @@ Power11 was announced in October 2024. The VUG source material (May 2024) predat
 | **Recommended AIX (native)** | AIX 7.3 TL3 SP1 (7300-03-01) or later — enables **POWER11 native compatibility mode**; AIX 7.3 TL4 is the current preferred level |
 | **SMT support** | SMT8 supported; SMT1/2/4/8 modes available — same `smtctl` command |
 | **Core count** | Up to 24 cores per chip (increased from 15 on Power10) |
-| **Hardware compression** | NX GZIP hardware accelerator confirmed for Power11 (IBM Community, Brian Veale, 2022: "Power9...Power10 or later"). Use `pigz -p 8` with `zlibNX`. Requires `POWER9`, `POWER10`, or `POWER11` compat mode — NOT `POWER9_Base`. Verify with `nxstat -S`. |
+| **Hardware compression** | NX GZIP hardware accelerator confirmed for Power11. Use `pigz -p 8` with `zlibNX`. Requires `POWER9`, `POWER10`, or `POWER11` compat mode — NOT `POWER9_Base`. Verify with `nxstat -S`. |
 | **cpu_count behaviour** | Same SMT-based logical CPU counting applies: 4 physical cores × SMT8 = 32 logical CPUs |
 | **AWR >1031 CPU patch** | Still required — Power11 E1150/E1180 configurations with many cores at SMT8 will exceed 1031 logical CPUs; request Oracle patch for your release |
 | **CPU folding** | Still controlled via `schedo vpm_throughput_mode` — mechanism unchanged |
@@ -275,72 +274,37 @@ lparstat -i | grep -E "Mode|Type|Entitled"      # Confirm LPAR config carried ov
 
 ### AIX Compatibility Mode — Power9 / Power10 / Power11
 
-Each Power processor generation defines a **processor compatibility mode** for AIX. The mode an LPAR runs in determines which processor instructions, scheduler optimisations, and tuning defaults are available — regardless of which physical hardware the LPAR is currently running on. This matters most when migrating between generations.
-
 | Power Generation | AIX Level | Compatibility Mode | Notes |
 |---|---|---|---|
 | **Power9** | AIX 7.1 TL5+ / AIX 7.2 TL1+ | POWER9 / POWER9_Base | Native Power9 mode |
-| **Power9** | AIX 7.2 TL5 SP10+ | POWER9 | Also supported on Power11 hardware (compat) |
 | **Power10** | AIX 7.2 TL4+ | POWER10 / POWER10_Base | Native Power10 mode; `vpm_throughput_mode` default = 2 on fresh AIX 7.0.3 install |
-| **Power10** | AIX 7.3 TL0+ | POWER10 native | Recommended for new Power10 deployments; AIX 7.1 is end-of-support and not appropriate for production |
 | **Power11** | AIX 7.2 TL5 SP10 (7200-05-10-2520) | POWER9 / POWER9_Base | Runs on Power11 hardware in compat mode only; no Power11-native features |
-| **Power11** | AIX 7.3 TL2 SP4 (7300-02-04-2520) | POWER9 / POWER9_Base | Runs on Power11 hardware; still no Power11-native features |
 | **Power11** | AIX 7.3 TL3 SP1 (7300-03-01) | **POWER11 native** | First AIX level with native Power11 mode; minimum for full capability |
 | **Power11** | AIX 7.3 TL4 | **POWER11 native** | Current preferred level for new Power11 deployments |
-
-**Why this matters for Oracle tuning:**
-- `vpm_throughput_mode` defaults are set by AIX **per generation**. In POWER9 compat mode on Power11 hardware, AIX behaves as Power9 (mode=1), not Power11.
-- NUMA/SRAD topology seen by AIX reflects the **physical hardware**, not the compat mode — so even in POWER9 compat mode on Power11, `lssrad -va` shows the Power11 chip layout.
-- Processor-specific Oracle tuning (parallelism, cpu_count, cost-based optimizer) is driven by logical CPU count, which depends on physical cores × SMT — unaffected by compat mode.
-
-> **Recommendation for new Power11 deployments**: Target AIX 7.3 TL3 SP1 or later (TL4 preferred) for native Power11 mode. Use AIX 7.2 TL5 SP10 or AIX 7.3 TL2 SP4 only as a transitional step when an immediate AIX upgrade is not feasible.
 
 ```bash
 # Check the active processor compatibility mode on any Power generation
 lparstat -i | grep -i "compat"
 # or
 prtconf | grep -i "Processor Version"
-
-# Example output on Power11 in native mode:
-#   Processor Compatibility Mode: POWER11
-# Example on Power11 in compat mode:
-#   Processor Compatibility Mode: POWER9
 ```
-
-### Power11 — Confirmed and Remaining Open Items
-
-| Item | Power10 value | Power11 status |
-|---|---|---|
-| **NX GZIP / `zlibNX` / `pigz`** | Confirmed Power9/Power10 | **Confirmed for Power11** — IBM source states "Power10 or later"; requires `POWER9`/`POWER10`/`POWER11` compat mode (not `POWER9_Base`). Verify `nxstat -S`. |
-| **Oracle SE2 eligibility** | S1012, S1014 eligible | S1112: IBM product page markets it as "without higher software licensing costs" (successor to SE2-eligible S914). SE2 eligibility follows the pattern but **confirm with Oracle licensing team before purchase**. |
-| **Oracle core factor** | 1.0 | **Confirmed 1.0** for all IBM POWER processors per Oracle Processor Core Factor Table. |
-| **`vpm_throughput_mode` default** | 2 (AIX 7.0.3 on Power10) | ⚠ Power11 native mode default not confirmed. Value is **preserved across migration** — capture Power10 value before migrating, verify post-migration with `schedo -a | grep vpm_throughput_mode`. |
-| **NUMA / SRAD topology** | E1080: multi-drawer, SRADs with potential 0 local mem | ⚠ Power11 E1150/E1180 topology not yet documented. Run `lssrad -va` after deployment — mandatory. S1112 expected single-node based on 2U compact form factor. |
-| **DSO/MPSS (`aso_active`)** | AIX 7.3 TL1+ on Power10 | ⚠ Power11 not explicitly confirmed in source; expected to work in native mode. Verify `lssrc -s aso` and IBM Support #7240644. |
-| **AME** | Built-in Power8/9/10 | ⚠ Power11 AME hardware not confirmed. Rarely used for Oracle anyway (not recommended for production). |
-| **`mpstat -d` S3/S4/S5 ratios** | Baseline on Power10 chip layout | Re-baseline after migration — chip topology changes affect expected local/near/far ratios. |
 
 ### Migration Checklist: Power10 → Power11
 
 **1. Plan and upgrade the AIX level before the hardware migration.**
 
-The preferred target is **AIX 7.3 TL4** (fix support through December 2028):
-- AIX 7.3 TL3 SP1: first level with native Power11 mode (fix support through December 2027)
-- AIX 7.3 TL4: adds further Power11-specific scalability, including support for up to **256 cores / 2048 hardware threads per LPAR**; preferred for new deployments
-- AIX 7.2 TL5 SP10: Power11-supported, but runs in POWER9/POWER9_Base compatibility mode — acceptable as a transitional step only
-- Upgrade AIX **before** moving to Power11 hardware whenever practical; this avoids combining an OS upgrade with a hardware migration in the same change window.
+Target **AIX 7.3 TL4** (fix support through December 2028):
+- AIX 7.3 TL3 SP1: first level with native Power11 mode
+- AIX 7.3 TL4: adds Power11-specific scalability, up to 256 cores / 2048 hardware threads per LPAR
+- Upgrade AIX **before** moving to Power11 hardware whenever practical.
 
 **2. Capture a complete `lparstat -i` snapshot before migration.**
-
-Do not just grep — capture the full output. It records entitlement, VP count, SMT mode, memory, and LPAR configuration. You will need this baseline for comparison after migration and for Oracle licensing documentation.
 
 ```bash
 lparstat -i > /tmp/lparstat-pre-migration-$(hostname)-$(date +%Y%m%d).txt
 ```
 
 **3. Capture `schedo` and `vmo` parameter baselines before migration.**
-
-AIX preserves the selected `vpm_throughput_mode` value across a hardware migration — it is **not** automatically reset or updated for Power11. Capture it before migration so you can make a deliberate decision on the destination system.
 
 ```bash
 schedo -a > /tmp/schedo-pre-migration-$(hostname)-$(date +%Y%m%d).txt
@@ -349,8 +313,6 @@ vmo -a    > /tmp/vmo-pre-migration-$(hostname)-$(date +%Y%m%d).txt
 
 **4. After migration — verify processor compatibility mode.**
 
-Capture the full `lparstat -i` output and compare against the pre-migration baseline.
-
 ```bash
 lparstat -i > /tmp/lparstat-post-migration-$(hostname)-$(date +%Y%m%d).txt
 diff /tmp/lparstat-pre-migration-*.txt /tmp/lparstat-post-migration-*.txt
@@ -358,57 +320,35 @@ diff /tmp/lparstat-pre-migration-*.txt /tmp/lparstat-post-migration-*.txt
 
 **5. After migration — reassess NUMA/SRAD topology.**
 
-The Power11 chip layout differs from Power10. The goal is not that it must be better or worse, but that large Oracle LPARs should be explicitly reviewed — especially if the LPAR spans multiple nodes on the new hardware.
-
 ```bash
 lssrad -va
 mpstat -d 1 30    # Check S3hrd (local) / S4hrd (near) / S5hrd (far) ratios
-# Re-establish a new baseline; do not compare S3/S4/S5 ratios directly against Power10 values
 ```
 
 **6. After migration — review `vpm_throughput_mode` for Power11 optimality.**
 
-The value was preserved from Power10. Verify it is still appropriate:
-
 ```bash
 schedo -a | grep vpm_throughput_mode
-# Compare against pre-migration baseline
-# On Power10, mode=2 was the AIX-set default and proven optimal
-# On Power11 in native mode, assess whether the Power10 default remains optimal
-# or whether a different value better suits the new chip architecture
 ```
 
 **7. Revalidate Oracle CPU configuration.**
-
-Particularly relevant if LPAR entitlement, VP count, SMT mode, or processor activation changed during migration:
 
 ```sql
 -- Verify Oracle sees the correct logical CPU count
 SHOW PARAMETER cpu_count;
 SHOW PARAMETER parallel_threads_per_cpu;
 SHOW PARAMETER parallel_max_servers;
-
--- Check Resource Manager plan if used
-SELECT plan, status FROM dba_rsrc_plans WHERE status = 'ACTIVE';
 ```
-
-Also re-check `db_writer_processes` and GCS server process count (RAC) which are derived from `cpu_count`.
 
 **8. Check AWR for `> 1031 logical CPUs` warning** if on large E1150/E1180 configs with SMT8.
 
-**9. Verify Oracle SE2 eligibility for Power11** with Oracle licensing team if planning an SE2 deployment — SE2 qualification for Power11 is unconfirmed at time of writing. The Oracle core factor for all IBM POWER processors (including Power11) is **1.0** per the Oracle Processor Core Factor Table.
+**9. Verify Oracle SE2 eligibility for Power11** with Oracle licensing team if planning an SE2 deployment.
 
 ---
 
-## Source Reference
-IBM Power Systems Virtual User Group, May 2024:
-- Session 1: "Oracle on Power Best Practices — Memory and CPU" (Ralf Schmidt-Dannert, IBM ATG)
-- Deck: `OracleOnPowerTuningConsiderations_CPU_Memory_NEXT.pptx` (~89 slides)
+## References
 
-Power11 additions based on:
-- IBM public product announcements (October 2024)
 - IBM Support: AIX on Power11 supported levels — https://www.ibm.com/support/pages/node/7240644
 - IBM Support: Power11 AIX compatibility modes — https://www.ibm.com/support/pages/node/7282898
 - IBM AIX Support Lifecycle — https://www.ibm.com/support/pages/aix-support-lifecycle-information
-
-Items marked ⚠️ require verification — no authoritative source available at time of writing.
+- AIX with Oracle Database on IBM Power Systems — Performance and Stability: https://www.ibm.com/support/pages/node/6825029
