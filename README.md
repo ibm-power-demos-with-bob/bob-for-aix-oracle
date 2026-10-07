@@ -10,8 +10,8 @@ on AIX, and Oracle Database administration on AIX / Power Systems.
 ```
 .agents/
   skills/
-    aix-aiops/
-      SKILL.md          # AIX system administration & AIOps skill
+    aix/
+      SKILL.md          # AIX system administration & skill
     ansible-aix/
       SKILL.md          # Ansible ibm.power_aix skill
     oracle-dba-aix/
@@ -42,10 +42,10 @@ companion skill so the full reference material is loaded at activation time.
 
 ## Skills
 
-### `aix-aiops`
+### `aix`
 
 **Activates when:** working on IBM AIX systems — administration, performance
-tuning, troubleshooting, or AIOps automation.
+tuning, troubleshooting, or automation.
 
 Covers AIX-native commands (`lsdev`, `errpt`, `lsvg`, `topas`, `nmon`,
 `smitty`), JFS2/LVM management, AIX networking, performance tools, and

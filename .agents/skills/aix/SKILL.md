@@ -1,14 +1,14 @@
 ---
-name: aix-aiops
+name: aix
 description: >-
   Use when administering, troubleshooting, tuning, or automating IBM AIX
   systems. Covers AIX-native commands (lsdev, errpt, lsvg, topas, nmon, smitty),
-  LVM, JFS2, networking, performance monitoring, and AIOps automation. Trigger
+  LVM, JFS2, networking, performance monitoring, and automation. Trigger
   phrases: "AIX", "IBM Power", "lsdev", "errpt", "smitty", "lsvg", "topas",
   "nmon", "oslevel", "lslpp", "JFS2", "LVM on AIX".
 ---
 
-# AIX AIOps Skill
+# AIX Skill
 
 ## Core Principles
 
@@ -153,13 +153,13 @@ nim -o lpp_source -a server=master -a location=/nim/lpp <lpp_res>
 
 ---
 
-## AIOps Automation Guidelines
+## Automation Guidelines
 
 - Prefer **parseable output**: use `-c` (colon-separated) or JSON flags where available.
 - Always include **error detection**: check `$?` after each command.
 - Use **logging**: redirect output to timestamped log files.
 - Consider **idempotency**: check current state before making changes.
-- Integrate with monitoring: forward `errpt` entries to your SIEM/AIOps platform.
+- Integrate with monitoring: forward `errpt` entries to your SIEM platform.
 
 ```bash
 # Example: parseable disk info for automation
