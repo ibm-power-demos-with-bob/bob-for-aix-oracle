@@ -317,7 +317,7 @@ pools, NUMA topology, paging space, `vmo` tuning, `lock_sga`, `lssrad`.
 
 ---
 
-### 4. `licensing.md` — Oracle Licensing
+### 4. `licensing/licensing.md` — Oracle Licensing
 **Skill name**: `oracle-aix-best-practices-licensing`
 
 Covers hard partitioning with CAPPED LPARs and Shared Processor Pools,
@@ -358,8 +358,8 @@ spin, RAC on AIX, HAIP, pigz compression, IBM Java in Oracle, PowerVS tiers.
 | SMT, LPAR sizing, CPU entitlement | `best-practices/cpu.md` |
 | AIO, JFS2, hdisk, MPIO, ASM storage | `best-practices/io-storage.md` |
 | SGA pages, huge pages, NUMA, vmo | `best-practices/memory.md` |
-| Licensing, audit, LPM, SE2 | `best-practices/licensing.md` |
 | Installation, RAC, pigz, misc | `best-practices/misc.md` |
+| Licensing, audit, LPM, SE2 | `licensing/licensing.md` |
 
 ---
 
