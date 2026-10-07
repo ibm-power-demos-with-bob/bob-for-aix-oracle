@@ -1,5 +1,5 @@
 ---
-name: oracle-best-practices-memory
+name: oracle-aix-best-practices-memory
 description: >-
   Use when tuning AIX memory management for an Oracle database on IBM Power Systems. Covers AIX
   memory pools, page sizes (4KB/64KB/16MB), SGA page size selection, JFS2 inode/metadata cache

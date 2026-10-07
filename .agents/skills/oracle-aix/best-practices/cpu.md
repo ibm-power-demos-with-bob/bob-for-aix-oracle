@@ -1,5 +1,5 @@
 ---
-name: oracle-best-practices-cpu
+name: oracle-aix-best-practices-cpu
 description: >-
   Use when tuning CPU and LPAR configuration for Oracle Database on IBM Power Systems / AIX.
   Covers SMT mode selection, CPU folding, vpm_throughput_mode, vCPU sizing, entitlement ratios,

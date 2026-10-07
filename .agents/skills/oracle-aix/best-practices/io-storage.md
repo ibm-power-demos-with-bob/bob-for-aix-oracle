@@ -1,5 +1,5 @@
 ---
-name: oracle-best-practices-io-storage
+name: oracle-aix-best-practices-io-storage
 description: >-
   Use when tuning I/O and storage configuration for Oracle Database on IBM Power Systems / AIX.
   Covers asynchronous I/O (AIO), filesystemio_options, fiber channel adapter tuning (fast_fail,
@@ -41,7 +41,7 @@ Slide deck: `OracleOnPowerTuningConsiderations_AIX_IO_Misc_NEXT.pptx` (~116 slid
    - Correct storage layout: spread I/O across maximum physical resources.
    - Tune fiber channel stack and hdisk parameters.
    - Use software striping (LV striping or ASM) to distribute I/O.
-   - In PowerVS: ensure the correct I/O tier is selected (see `oracle-best-practices-misc`).
+   - In PowerVS: ensure the correct I/O tier is selected (see `oracle-aix-best-practices-misc`).
 
 > **Key principle**: The DBA, system administrator, and storage administrator must collaborate.
 > Finger-pointing between teams is the most common cause of delayed problem resolution.
@@ -1194,7 +1194,7 @@ rendev -l ent2 -n ent_rac_pub    # Example: rename to meaningful name
 In PowerVS, management interfaces may appear before your RAC interfaces in OS enumeration.
 Oracle RAC detects interfaces in order and may select IPv6-only or unaddressed interfaces first,
 even when explicitly excluded. Use `rendev` to ensure IPv4 RAC interfaces appear first (see
-`oracle-best-practices-misc` for the full procedure).
+`oracle-aix-best-practices-misc` for the full procedure).
 
 ### `flexctl_latency` for 25Gbps Adapters
 

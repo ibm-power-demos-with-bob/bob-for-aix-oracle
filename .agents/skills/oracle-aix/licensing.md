@@ -1,5 +1,5 @@
 ---
-name: oracle-best-practices-licensing
+name: oracle-aix-best-practices-licensing
 description: >-
   Use when discussing or auditing Oracle Database licensing on IBM Power Systems / AIX. Covers
   hard partitioning with CAPPED LPARs and Shared Processor Pools, lparstat -i documentation,
@@ -321,7 +321,7 @@ Certain Oracle Database options and management packs are **separately licensed**
 > ⚠ **Disclaimer**: The output of this script is **technical data only**. What constitutes a licensing obligation is determined by your Oracle contract and must be assessed by your Oracle licensing team.
 
 > **Script location**: The original script from MOS 1317265.1 is in this repository at:
-> `.agents/skills/oracle-best-practices-licensing/scripts/options_packs_usage_statistics.sql`
+> `.agents/skills/oracle-aix-best-practices-licensing/scripts/options_packs_usage_statistics.sql`
 > Script version in this repo: **Oct-2021** (covers Oracle 11.2 through 21c+).
 > **Always check MOS 1317265.1 for the latest version** — Oracle updates the script as new options are added.
 

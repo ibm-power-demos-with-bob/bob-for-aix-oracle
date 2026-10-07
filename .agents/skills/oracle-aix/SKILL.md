@@ -276,7 +276,7 @@ chuser shell=/bin/ksh oracle
 ## Sub-skills (deep-dive topics)
 
 ### 1. `best-practices/cpu.md` — CPU & LPAR Tuning
-**Skill name**: `oracle-best-practices-cpu`
+**Skill name**: `oracle-aix-best-practices-cpu`
 
 Covers SMT mode selection (SMT1/2/4/8), CPU folding, `vpm_throughput_mode`,
 vCPU sizing, entitlement ratios, dedicated vs shared LPARs, virtual processor
@@ -289,7 +289,7 @@ pools, `vpm_throughput_mode`, CPU folding, LPAR sizing for Oracle.
 ---
 
 ### 2. `best-practices/io-storage.md` — I/O & Storage Tuning
-**Skill name**: `oracle-best-practices-io-storage`
+**Skill name**: `oracle-aix-best-practices-io-storage`
 
 Covers asynchronous I/O (AIO), `filesystemio_options`, fiber channel adapter
 tuning (`fast_fail`, `dyntrk`, multiple queues), hdisk `qdepth`/transfer size,
@@ -303,7 +303,7 @@ fiber channel tuning, ASM on AIX, `filesystemio_options`, LVM striping for Oracl
 ---
 
 ### 3. `best-practices/memory.md` — Memory Tuning
-**Skill name**: `oracle-best-practices-memory`
+**Skill name**: `oracle-aix-best-practices-memory`
 
 Covers AIX memory pools, page sizes (4KB/64KB/16MB), SGA large page selection
 (`ORACLE_SGA_PGSZ`), JFS2 inode/metadata cache sizing, NUMA/SRAD affinity,
@@ -318,7 +318,7 @@ pools, NUMA topology, paging space, `vmo` tuning, `lock_sga`, `lssrad`.
 ---
 
 ### 4. `licensing.md` — Oracle Licensing
-**Skill name**: `oracle-best-practices-licensing`
+**Skill name**: `oracle-aix-best-practices-licensing`
 
 Covers hard partitioning with CAPPED LPARs and Shared Processor Pools,
 `lparstat -i` documentation for audits, Oracle licensing in IBM Power Virtual
@@ -337,7 +337,7 @@ LPAR, LPM and licensing, Oracle SE2 on Power, PowerVS licensing, core factor.
 ---
 
 ### 5. `best-practices/misc.md` — Miscellaneous Best Practices
-**Skill name**: `oracle-best-practices-misc`
+**Skill name**: `oracle-aix-best-practices-misc`
 
 Covers Oracle 19c installation and patching on AIX (base 19.3 + RU in one step),
 mutex spin count tuning (`_spin_count`), `mark_hot` for hot objects, CPU

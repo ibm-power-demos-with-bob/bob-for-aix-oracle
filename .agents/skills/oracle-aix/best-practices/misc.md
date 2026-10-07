@@ -1,5 +1,5 @@
 ---
-name: oracle-best-practices-misc
+name: oracle-aix-best-practices-misc
 description: >-
   Use for miscellaneous Oracle Database best practices on IBM Power Systems / AIX that span multiple
   domains: Oracle 19c installation and patching on AIX, mutex spin count tuning, mark_hot for hot
