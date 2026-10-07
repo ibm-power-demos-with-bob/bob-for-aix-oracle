@@ -372,6 +372,96 @@ spin, RAC on AIX, HAIP, pigz compression, IBM Java in Oracle, PowerVS tiers.
 
 ---
 
+## Slash Commands
+
+### `/oracle-aix-setup`
+
+Set up the Oracle `db` skill from the official Oracle skills repository.
+Run this once to clone the Oracle community `db` skill content directly into
+`.agents/skills/oracle-aix/operations/` so the agent can reference it.
+
+**What this command does:**
+
+1. Sparse-clones only the `db/` subtree from `https://github.com/oracle/skills`
+   into a temporary directory, then copies its **contents** (not the `db/` folder
+   itself) directly into `.agents/skills/oracle-aix/operations/`.
+2. Confirms that `.agents/skills/oracle-aix/operations/` is listed in
+   `.gitignore` (adds it if absent) so the cloned content is never committed.
+3. Reports the files and directories now available under
+   `.agents/skills/oracle-aix/operations/`.
+
+**Detect the OS first**, then follow the matching instructions below.
+
+---
+
+#### macOS / Linux
+
+```bash
+# Step 1 — sparse-clone db/ into a temp directory
+git clone \
+  --filter=blob:none \
+  --sparse \
+  https://github.com/oracle/skills.git \
+  /tmp/oracle-skills-clone
+
+cd /tmp/oracle-skills-clone
+git sparse-checkout set db
+
+# Step 2 — copy db/ contents directly into the target directory
+mkdir -p .agents/skills/oracle-aix/operations
+cp -r /tmp/oracle-skills-clone/db/. .agents/skills/oracle-aix/operations/
+
+# Step 3 — clean up
+rm -rf /tmp/oracle-skills-clone
+```
+
+---
+
+#### Windows (PowerShell)
+
+```powershell
+# Step 1 — sparse-clone db/ into a temp directory
+$tmp = Join-Path $env:TEMP "oracle-skills-clone"
+git clone --filter=blob:none --sparse `
+  https://github.com/oracle/skills.git $tmp
+
+Set-Location $tmp
+git sparse-checkout set db
+
+# Step 2 — copy db/ contents directly into the target directory
+$dest = Join-Path (Get-Location).ProviderPath `
+  ".agents\skills\oracle-aix\operations"
+New-Item -ItemType Directory -Force -Path $dest | Out-Null
+Copy-Item -Recurse -Force "$tmp\db\*" $dest
+
+# Step 3 — clean up
+Set-Location ..
+Remove-Item -Recurse -Force $tmp
+```
+
+---
+
+> **Already installed?** If `.agents/skills/oracle-aix/operations/` already
+> exists and has content, re-run the steps above with a fresh temp clone and
+> re-copy to update.
+
+**Ensure `.gitignore` entry** — check whether `.agents/skills/oracle-aix/operations/`
+is already in the root `.gitignore`. If it is not, add it:
+
+- macOS / Linux: `echo '.agents/skills/oracle-aix/operations/' >> .gitignore`
+- Windows: `Add-Content .gitignore '.agents/skills/oracle-aix/operations/'`
+
+**Confirm success** by listing `.agents/skills/oracle-aix/operations/` and
+reporting the subdirectories found (e.g. `performance/`, `security/`,
+`backup/`, …) so the user can see what Oracle skill content is now available.
+
+**After setup**, the `oracle-aix` skill will automatically look for topic files
+under `.agents/skills/oracle-aix/operations/` when answering Oracle-specific
+questions (SQL, PL/SQL, RMAN, Data Guard, performance, security, ORDS, SQLcl).
+
+---
+
+
 ## Documentation References
 
 - [Oracle Database 19c / 21c Docs](https://docs.oracle.com/en/database/oracle/oracle-database/)
