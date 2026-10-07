@@ -48,7 +48,7 @@ customModes:
       - mcp
       - skill
 
-  - slug: oracle-power
+  - slug: oracle-aix
     name: "Oracle DB on AIX/Power"
     description: >-
       Expert Oracle Database on IBM Power Systems and AIX. Covers best practices,

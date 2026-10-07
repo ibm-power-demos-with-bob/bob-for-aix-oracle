@@ -317,7 +317,7 @@ pools, NUMA topology, paging space, `vmo` tuning, `lock_sga`, `lssrad`.
 
 ---
 
-### 4. `best-practices/licensing.md` — Oracle Licensing
+### 4. `licensing.md` — Oracle Licensing
 **Skill name**: `oracle-best-practices-licensing`
 
 Covers hard partitioning with CAPPED LPARs and Shared Processor Pools,
@@ -328,7 +328,7 @@ S1014/S1112, Oracle Options/Management Packs usage detection
 (`options_packs_usage_statistics.sql`, MOS 1317265.1), audit evidence collection,
 DLPAR profile mismatch risk, and LPM frame widening.
 
-**Associated script**: `best-practices/scripts/options_packs_usage_statistics.sql`
+**Associated script**: scripts/options_packs_usage_statistics.sql`
 — queries `DBA_FEATURE_USAGE_STATISTICS` to detect licensed options/packs.
 
 **Load when the user asks about**: Oracle license audit, hard partitioning, capped
