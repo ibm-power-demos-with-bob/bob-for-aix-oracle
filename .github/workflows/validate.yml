@@ -1,0 +1,35 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  skills:
+    name: Skills, modes and rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Static checks (frontmatter, links, Bob modes, module names, Linux-isms)
+        run: python scripts/validate.py
+
+  ansible-examples:
+    name: ansible-lint on Ansible examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ansible-lint
+      - run: ansible-galaxy collection install ibm.power_aix
+      - name: ansible-lint (production profile)
+        run: ansible-lint --profile production .agents/skills/ansible-aix/examples/

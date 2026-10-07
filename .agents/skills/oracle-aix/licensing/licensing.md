@@ -1,31 +1,15 @@
----
-name: oracle-aix-best-practices-licensing
-description: >-
-  Use when discussing or auditing Oracle Database licensing on IBM Power Systems / AIX. Covers
-  hard partitioning with CAPPED LPARs and Shared Processor Pools, lparstat -i documentation,
-  Oracle licensing in IBM Power Virtual Server (PowerVS), the 10-day standby rule, Enterprise
-  Pools 2.0 (PEP 2.0), common licensing pitfalls with LPM, LPM disable from HMC, LPM contractual
-  negotiation, SE2 eligibility, Oracle Options/Management Packs usage detection, audit evidence
-  collection, DLPAR profile mismatch risk, and LPM frame widening. Trigger phrases:
-  "Oracle licensing Power", "hard partition AIX Oracle", "Oracle license audit Power",
-  "capped lpar Oracle license", "shared processor pool Oracle license", "lparstat -i Oracle",
-  "Oracle license PowerVS", "Oracle SE2 Power", "Oracle SE2 S1014", "Oracle SE2 S1112",
-  "power virtual server Oracle license", "10-day Oracle standby rule", "LPM Oracle licensing",
-  "LPM disable Oracle LPAR", "disable LPM Oracle HMC", "migration_disabled Oracle",
-  "LPM contract Oracle", "LPM exemption Oracle", "Oracle LPM written agreement",
-  "chsyscfg migration_disabled", "LPM frame widening Oracle",
-  "enterprise pools Oracle license", "Oracle core factor Power", "Oracle processor factor IBM",
-  "Oracle options packs usage", "options_packs_usage_statistics", "MOS 1317265",
-  "Oracle audit detection", "Oracle management packs licensed", "dba_feature_usage_statistics",
-  "Oracle partitioning policy", "Oracle data recovery licensing", "Oracle audit IBM Power",
-  "lshwres oracle", "lssyscfg oracle profile", "Oracle DLPAR max proc", "saved profile mismatch",
-  "Oracle Power11 core factor", "uncapped lpar Oracle cost".
----
-
 # Oracle Licensing on IBM Power Systems
 
-Technical insights for Oracle Database deployments on IBM Power Systems, to support licensing reviews.
-Source: IBM Power Systems VUG May 2024 sessions by Ralf Schmidt-Dannert, IBM ATG Principal Power Specialist.
+> **Read this file for:** hard partitioning (capped LPARs, shared processor
+> pools), `lparstat -i` and HMC evidence, LPM and how to disable it, PowerVS,
+> the 10-day failover rule, Enterprise Pools 2.0, SE2 eligibility,
+> options/packs usage detection, audit evidence, and profile-mismatch risks.
+> **Sources:** IBM Power Systems VUG May 2024 (Ralf Schmidt-Dannert, IBM ATG), the
+> Oracle policy documents linked below, and one third-party analysis (§10, marked
+> as such).
+
+Technical information about Oracle deployments on IBM Power Systems, to feed a
+licensing review.
 
 ---
 
@@ -51,28 +35,38 @@ Oracle recognizes **hard partitioning** as the mechanism to limit license requir
 
 | Technology | Qualifies for Hard Partitioning? |
 |---|---|
-| CAPPED LPAR | ✅ Yes |
-| Shared Processor Pool (SPP) with capacity limit | ✅ Yes |
-| Uncapped LPAR (no pool limit) | ❌ No — licenses the entire physical server |
-| Dedicated LPAR (donating) | ✅ Yes |
-| Live Partition Mobility (LPM) | ❌ Moves Oracle to unlicensed physical CPUs |
+| Capped shared LPAR | ✅ Yes |
+| Shared processor pool (SPP) with a maximum capacity | ✅ Yes (the pool maximum is the boundary) |
+| Dedicated-processor LPAR | ✅ Yes |
+| Dedicated-donating LPAR | Confirm with your Oracle licensing contact |
+| Uncapped LPAR in the default pool (no pool limit) | ❌ No: may license every core in the server |
+| Live Partition Mobility (LPM) | ❌ Moves Oracle onto other servers' cores |
 
-**Capped LPAR**: The LPAR's entitlement is the maximum it can consume. The hypervisor enforces this cap. Oracle licenses the **physical core equivalent** of the cap (applying Oracle's core factor table for Power processors).
+**Capped LPAR**: the hypervisor never lets the LPAR use more than its entitled
+capacity.
 
-**Shared Processor Pool**: A pool of physical cores shared by multiple LPARs. If the pool has a capacity limit, Oracle licenses are based on that limit, not the total server capacity.
+> **How a capped shared LPAR is counted** (rounded-up entitled capacity, or online
+> virtual processors) is a matter of interpretation and of your contract. Record
+> both values and let the licensing team decide. The conservative assumption is
+> the larger of the rounded-up EC and the online VPs.
+
+**Shared processor pool**: a pool of physical cores shared by several LPARs. When
+the pool has a maximum capacity, that maximum caps what all its LPARs together can
+use.
 
 ```bash
-# Document LPAR configuration for Oracle licensing audit
 lparstat -i
 
-# Key fields Oracle licensing team reviews:
-# - "Type"                       → Shared-SMT-8 (shared) or Dedicated
-# - "Mode"                       → Capped or Uncapped
-# - "Entitled Capacity"          → CPU entitlement (licenses based on this if capped)
-# - "Maximum Virtual CPUs"       → Max vCPU count
-# - "Shared Pool ID"             → Which SPP this LPAR belongs to
-# - "Maximum Capacity"           → For the SPP (pool max capacity)
-# - "Pool Capacity"              → Current pool size
+# Fields the licensing review needs:
+# - "Type"                         Shared-SMT-8 (shared) or Dedicated
+# - "Mode"                         Capped / Uncapped (Donating for dedicated-donating)
+# - "Entitled Capacity"            the LPAR's current entitlement (processing units)
+# - "Online Virtual CPUs"          current virtual processors
+# - "Maximum Virtual CPUs"         profile maximum for virtual processors
+# - "Maximum Capacity"             the LPAR's MAXIMUM entitled capacity (profile max), not the pool
+# - "Shared Pool ID"               0 = default pool (no limit beyond the server's shared cores)
+# - "Maximum Capacity of Pool"     the pool's maximum capacity (the SPP licensing boundary)
+# - "Active CPUs in Pool"          physical cores currently in the shared pool
 ```
 
 > Run `lparstat -i` **in every LPAR that runs Oracle software** on the server. Provide this output to Oracle's licensing team.
@@ -84,8 +78,9 @@ lparstat -i
 When multiple Oracle LPARs share an SPP with a defined maximum capacity:
 
 ```
-Oracle licenses required = SPP max_pool_capacity (in physical cores)
-                           × Oracle Core Factor for Power
+Oracle processor licenses ≈ SPP maximum capacity (in physical cores)
+                            × Oracle core factor for the processor
+(provided the pool's capacity is below the sum of the LPARs' possible consumption)
 ```
 
 Oracle's core factor for IBM Power processors (January 2026 table):
@@ -105,8 +100,8 @@ Oracle's core factor for IBM Power processors (January 2026 table):
 > Always verify against the current published table before finalising a license agreement — Oracle updates this document periodically.
 
 ```bash
-# Check SPP configuration
-lparstat -i | grep -E "Shared Pool|Pool Capacity|Mode|Capped"
+# Check the SPP configuration from inside the LPAR
+lparstat -i | grep -E "^Mode|^Shared Pool ID|^Maximum Capacity of Pool|^Active CPUs in Pool"
 
 # All LPARs running Oracle in the same SPP must be accounted for
 # The SPP maximum is the license boundary — not the sum of individual LPAR entitlements
@@ -148,35 +143,31 @@ The safest technical control — absent a contractual LPM exemption — is to **
 IBM documentation: https://www.ibm.com/docs/en/power10/0000-REF?topic=POWER10_REF/p10jak/p10jak_lpar_general_lpmdisable.html
 
 ```bash
-# On the HMC — disable LPM for a specific LPAR (CLI method)
-# Set migration_disabled=1 in the partition profile
+# On the HMC: disable LPM for one LPAR (a partition-level attribute; -r lpar uses name=)
+chsyscfg -r lpar -m <frame_name> -i "name=<lpar_name>,migration_disabled=1"
 
-chsyscfg -r lpar \
-  -m <frame_name> \
-  -i "lpar_name=<lpar_name>,migration_disabled=1"
+# Verify
+lssyscfg -r lpar -m <frame_name> -F name,migration_disabled
+# Expected: <lpar_name>,1
 
-# Verify the change
-lssyscfg -r lpar -m <frame_name> -F lpar_name,migration_disabled
-# Expected output: <lpar_name>,1
-
-# Also verify the saved profile reflects the setting
-lssyscfg -r prof -m <frame_name> \
-  -F lpar_name,migration_disabled
+# Check that no migration is in progress
+lslparmigr -r lpar -m <frame_name>
 ```
 
-> This setting prevents the HMC from initiating a Live Partition Mobility operation for this LPAR. It does not affect normal LPAR operations, PowerHA failover, or DLPAR resource changes.
+> This stops the HMC from starting an LPM operation for the LPAR. It doesn't
+> affect normal operation, PowerHA failover, or DLPAR changes. Check the attribute
+> name and support at your HMC level in the IBM document linked above
+> (`lssyscfg -r lpar -F` shows the attributes available).
 
 ### IBM Power Virtual Server (PowerVS) and LPM
 
 PowerVS uses LPM internally for server maintenance (evacuating LPARs before maintenance). **This must be disabled for Oracle LPARs**:
 
 ```bash
-# Oracle LPARs in PowerVS MUST be hard-pinned
-# Hard pinning prevents LPM
-# Contact your PowerVS admin or IBM to configure hard pinning on the LPAR
-
-# Verify hard-pinning status
-lparstat -i | grep "Memory Mode"   # Also check pin status via HMC
+# PowerVS: Oracle LPARs must use the "hard" pin policy, which prevents LPM.
+# Set the pin policy when creating the instance (or change it in the console or CLI).
+# Check it with the IBM Cloud CLI. lparstat inside the LPAR does not show it:
+ibmcloud pi instance get <instance-id>      # look for the pin policy field: hard
 ```
 
 > **Consequence**: Disabling LPM on Oracle LPARs means the PowerVS SLA (which assumes LPM capability for availability) does not apply. You must implement alternative HA:
@@ -214,27 +205,33 @@ PowerHA can dynamically grow/shrink CPU and memory for Oracle LPARs:
 
 ---
 
-## 5. Oracle Standby — The 10-Day Calendar Rule
+## 5. Failover Clusters: the 10-Day Rule
 
-For Oracle licensing on standby/DR servers:
-- Oracle allows a standby server to be unlicensed if the **Oracle software is not installed or accessible**.
-- The standby server can run the Oracle workload for **up to 10 calendar days per year** without requiring a permanent license.
+According to Oracle's Data Recovery licensing document (linked above):
 
-### PowerHA Active-Passive Architecture for License Optimization
+- **Failover environments** are clusters with shared storage where only one node
+  runs the database at a time, such as PowerHA active/passive. Here the unlicensed
+  spare node may run the database for **up to 10 separate days per calendar year**.
+- The rule covers **failover only**. It does **not** cover:
+  - Data Guard standby databases
+  - remote mirroring or replicated copies
+  - any configuration where the second copy runs or is kept up to date
+  
+  Those must be fully licensed.
+- Whether the Oracle software may be installed on the spare node, and how
+  "days" are counted, is defined in the document and your contract. Have the
+  licensing team confirm the configuration.
+
+### PowerHA active/passive design
 
 ```
-[Active Node] — Oracle installed, licensed, running
-[Standby Node] — Oracle software NOT installed; shared storage only
+[Active node]  runs the database. Licensed.
+[Spare node]   takes over only on failover. The database files are on shared storage,
+               accessible from one node at a time.
 ```
 
-- Shared storage contains database files accessible by only one node at a time.
-- The standby node has no Oracle software → no license required.
-- Failover ≤ 10 days/year → no license required on standby.
-
-This applies to:
-- PowerHA with JFS2 file systems (shared LVs)
-- PowerHA with ASM (shared raw LVs)
-- Both on-premises and PowerVS deployments
+This applies to PowerHA with JFS2 (shared VGs) or with ASM (shared raw hdisks),
+both on-premises and in PowerVS.
 
 ---
 
@@ -248,24 +245,23 @@ lparstat -i > /tmp/lparstat-$(hostname)-$(date +%Y%m%d).txt
 
 # Key fields to capture and review:
 # - Node Name, Partition Name, Partition Number
-# - Type (Shared vs. Dedicated)
-# - Mode (Capped vs. Uncapped)
-# - Entitled Capacity
-# - Maximum Virtual CPUs
-# - Minimum/Maximum Memory
-# - Online Memory
-# - Shared Pool ID
-# - Maximum Capacity (pool)
-# - Pool Capacity (pool current physical cores)
-# - Hypervisor
-# - Firmware version
+# - Type (Shared / Dedicated), Mode (Capped / Uncapped / Donating)
+# - Entitled Capacity, Maximum Capacity (the LPAR's maximum entitlement)
+# - Online / Maximum Virtual CPUs
+# - Online / Maximum Memory
+# - Shared Pool ID, Maximum Capacity of Pool, Active CPUs in Pool
 ```
 
-### What Oracle Licensing Reviews
-1. **`Mode: Capped`** — confirms hard partitioning is active.
-2. **`Entitled Capacity`** — the licensed CPU allocation.
-3. **`Pool Capacity` / `Maximum Capacity`** — if using SPP licensing, the pool cap = license boundary.
-4. **`Maximum Virtual CPUs`** — should be reasonable relative to entitlement (no over-allocation that implies SPP bypass).
+### What the licensing review looks at
+
+1. **`Mode: Capped`** confirms the LPAR is capped.
+2. **`Entitled Capacity`** and **`Online Virtual CPUs`** are the inputs for
+   counting a capped LPAR (§1).
+3. **`Maximum Capacity of Pool`**: with a non-default pool, the pool maximum is
+   the SPP boundary.
+4. **`Maximum Capacity`** (LPAR maximum) and **`Maximum Virtual CPUs`** show what
+   the LPAR could reach through DLPAR. Keep them close to the current values
+   (§10.2).
 
 ---
 
@@ -277,53 +273,64 @@ lparstat -i > /tmp/lparstat-$(hostname)-$(date +%Y%m%d).txt
 | LPM used on Oracle LPAR | Destination server becomes licensed | Hard-pin Oracle LPARs |
 | SPP max_pool_capacity set higher than needed | Higher license cost | Size SPP to actual peak need |
 | Over-allocated `max_virtual_procs` | Hypervisor may spread LPAR across more physical nodes; also can raise licensing questions | Set realistic max vCPU |
-| Assuming a fractional core factor for Power | Incorrect license calculation | All IBM POWER processors use factor 1.0 per Oracle's published table — licenses = physical cores × 1.0 |
-| Standby with Oracle software installed | Must be licensed if operational > 10 days/year | Remove Oracle software from standby; use PowerHA shared storage |
+| Assuming a fractional core factor for Power | Wrong licence calculation | POWER6 to POWER10 have factor 1.0 in Oracle's table. Confirm Power11 in writing |
+| Treating a Data Guard standby as covered by the 10-day rule | Unlicensed standby | The 10-day rule covers failover clusters only. License Data Guard standbys (§5) |
+| Spare failover node used more than 10 days a year | Full licence needed | Track failover days. Fail back promptly |
 | PEP 2.0 pools without SPP limits on Oracle LPARs | Potentially licenses the entire pool | Always use CAPPED LPARs + SPP in PEP 2.0 |
 
 ---
 
 ## 8. Oracle SE2 Licensing on Power
 
-Oracle Standard Edition 2 (SE2) eligibility is **server-model specific**, not generation-wide. Only designated entry-level scale-out models qualify. Mid-range (S1022, S1024, S1042) and high-end enterprise (Exxxx) servers do **not** qualify for SE2 regardless of core count or configuration.
+### The SE2 rules
 
-### Eligible Models
+- SE2 may only be licensed on servers with a **maximum capacity of 2 sockets**,
+  and Oracle defines what a "socket" is.
+- **On Power10 and Power11**, a dual-chip module can count as more than one
+  socket. Eligibility therefore comes down to **specific server models**, not
+  generations.
+- An SE2 database instance is limited to **16 CPU threads** at any time. At SMT8
+  that is only **2 cores' worth** of threads, so size the LPAR and SMT mode with
+  this in mind.
+- **RAC is not available with SE2 from 19c onwards.** Use a failover solution
+  (PowerHA, or Oracle's SE2 high-availability option) instead.
 
-| Generation | Eligible Models | Not Eligible |
+### Models (confirm against Oracle's current SE2 statements before buying)
+
+| Generation | Treated as eligible in the source | Not eligible |
 |---|---|---|
-| Power9 | S9xx scale-out servers | E950, E980 and all Exxxx enterprise |
-| Power10 | S1012, S1014 | S1022, S1022S, S1024, E1050, E1080 |
-| Power11 | S1112 | S1024, S1042, E1150, E1180 and all other models |
+| Power9 | 1–2 socket scale-out (S9xx) | E950, E980 |
+| Power10 | S1012, S1014 | S1022, S1022s, S1024, E1050, E1080 |
+| Power11 | Confirm with Oracle in writing (the source names S1112; check that this model exists and qualifies) | S1122, S1124, E1150, E1180 |
 
-### SE2 Licensing Constraints (all generations)
-
-- Maximum **16 physical cores** per server.
-- Maximum **2 sockets** per server.
-- Up to **3 RAC instances**.
-- The physical server model must appear on Oracle's SE2 eligible hardware list — verify with Oracle before purchase.
-
-> **Common pitfall**: Upgrading from an SE2-eligible model (e.g., S1014) to a larger scale-out server (e.g., S1024 or S1042) or any enterprise server (Exxxx) **disqualifies the deployment from SE2**. Plan hardware refreshes with this constraint in mind.
+> **Common pitfall:** a hardware refresh from an eligible entry model (such as the
+> S1014) to a larger scale-out or enterprise server **ends SE2 eligibility**.
 
 ```bash
-# Verify server model — must be an SE2-eligible model
-lparstat -i | grep "Server Name"
-prtconf | grep "System Model"
+prtconf | grep "System Model"     # server model (inside the LPAR)
+uname -M
 ```
 
 ---
 
 ## 9. Oracle Options and Management Packs — Usage Detection
 
-Certain Oracle Database options and management packs are **separately licensed** and may be activated without the DBA's explicit knowledge (e.g., the Diagnostics Pack starts automatically when `STATISTICS_LEVEL=TYPICAL` or higher). Using an option without a license is a compliance risk.
+Some Oracle Database options and management packs are **licensed separately**,
+and they can be used without the DBA noticing. For example, AWR snapshots are
+collected by default, and querying AWR or running AWR/ADDM reports is Diagnostics
+Pack usage. `CONTROL_MANAGEMENT_PACK_ACCESS` controls pack access, and its default
+is `DIAGNOSTIC+TUNING`. Using an option without a license is a compliance risk.
 
 **Oracle MOS 1317265.1** — *"Database Options/Management Packs Usage Detection"* — provides a SQL script (`options_packs_usage_statistics.sql`) that queries `DBA_FEATURE_USAGE_STATISTICS` to report which options have been used and when.
 
 > ⚠ **Disclaimer**: The output of this script is **technical data only**. What constitutes a licensing obligation is determined by your Oracle contract and must be assessed by your Oracle licensing team.
 
-> **Script location**: The original script from MOS 1317265.1 is in this repository at:
-> `.agents/skills/oracle-aix-best-practices-licensing/scripts/options_packs_usage_statistics.sql`
-> Script version in this repo: **Oct-2021** (covers Oracle 11.2 through 21c+).
-> **Always check MOS 1317265.1 for the latest version** — Oracle updates the script as new options are added.
+> **Getting the script:** the script is Oracle Support content, so it is **not
+> redistributed** in this repository. Download the current version from MOS
+> 1317265.1 and save it in the `scripts/` folder next to this file as
+> `options_packs_usage_statistics.sql` (that file name is git-ignored). The steps are in [`scripts/README.md`](scripts/README.md).
+> If the file is missing, use the quick queries below and tell the user where to
+> get the full script.
 
 ### Key Tables Queried
 
@@ -365,39 +372,40 @@ The script reports for each option/pack:
 
 | Option / Pack | How it gets activated unintentionally |
 |---|---|
-| **Diagnostics Pack** | `STATISTICS_LEVEL = TYPICAL` (the default) enables AWR; AWR is a Diagnostics Pack feature |
-| **Tuning Pack** | SQL Tuning Advisor, SQL Access Advisor — often called by EM or automated jobs |
-| **Advanced Compression** | `ALTER TABLE ... COMPRESS FOR OLTP` or any compression clause |
-| **Partitioning** | Any `PARTITION BY` clause in DDL |
-| **Oracle RAC** | Cluster services installed even on single-instance |
-| **Label Security / Database Vault** | Installed but never configured — check `V$OPTION` |
-| **Real Application Testing** | STS capture or DB Replay sessions |
-| **Multitenant** | Using PDB/CDB architecture (licensed per Oracle version/edition) |
+| **Diagnostics Pack** | Querying `DBA_HIST_*`, AWR/ADDM/ASH reports, or EM performance pages, while `CONTROL_MANAGEMENT_PACK_ACCESS` allows it (the default) |
+| **Tuning Pack** | SQL Tuning Advisor, SQL Access Advisor, SQL profiles, often started by EM or automated jobs |
+| **Advanced Compression** | `ROW STORE COMPRESS ADVANCED` (formerly `COMPRESS FOR OLTP`), SecureFiles compression or deduplication, compressed Data Pump or RMAN with non-BASIC algorithms. BASIC table compression is part of EE |
+| **Partitioning** | Any `PARTITION BY` clause, including objects created by tools or applications |
+| **Real Application Clusters** | A database opened by more than one instance (`cluster_database=TRUE`). Grid Infrastructure alone (Oracle Restart or Clusterware) does not mean RAC usage |
+| **Label Security / Database Vault** | Configured and enabled. `V$OPTION` shows what is installed or enabled, not usage, so use `DBA_FEATURE_USAGE_STATISTICS` |
+| **Real Application Testing** | Workload capture/replay, SQL Performance Analyzer |
+| **Multitenant** | From 19c, more than **3 user PDBs** in a CDB (EE). Up to 3 are allowed without the option |
 
 ```sql
--- Quick check: which options are currently installed in the Oracle binary
+-- Installed / enabled options in the binary (not usage)
 SELECT parameter, value FROM v$option ORDER BY parameter;
 
--- Quick check: features with any detected usage
+-- Features with any detected usage
 SELECT name, currently_used, detected_usages, last_usage_date, first_usage_date
 FROM   dba_feature_usage_statistics
 WHERE  detected_usages > 0
 ORDER  BY last_usage_date DESC NULLS LAST;
 
--- AWR retention check (Diagnostics Pack)
-SELECT retention FROM dba_hist_wr_control;
--- If AWR is collecting data and you don't have Diagnostics Pack licensed,
--- set STATISTICS_LEVEL = BASIC to disable AWR collection.
--- WARNING: STATISTICS_LEVEL = BASIC significantly impacts self-monitoring.
--- Engage Oracle licensing to find the right resolution.
+-- Management pack access setting
+SHOW PARAMETER control_management_pack_access
+-- Without Diagnostics/Tuning Pack licences, the documented control is
+-- CONTROL_MANAGEMENT_PACK_ACCESS = 'NONE' (not STATISTICS_LEVEL=BASIC, which disables much more).
+-- Decide this with the licensing team. Revert: set it back to the recorded value.
 ```
 
 ---
 
 ## 10. IBM Power LPAR Licensing — Partition Configuration Risk Deep Dive
 
-> **Source**: Redress Compliance, "Oracle IBM LPAR Licensing", August 2025 (updated September 2026).
-> URL: https://redresscompliance.com/oracle-ibm-lpar-licensing
+> **Third-party source** (not Oracle or IBM): Redress Compliance, "Oracle IBM LPAR
+> Licensing", August 2025 (updated September 2026).
+> https://redresscompliance.com/oracle-ibm-lpar-licensing
+> Treat these examples as illustrations, not as Oracle policy.
 
 This section covers the most consequential configuration risks seen in Oracle audits on IBM Power Systems, including real cost worked examples, the DLPAR profile mismatch trap, and LPM frame widening.
 
@@ -409,23 +417,27 @@ A common misconception is that Oracle licensing is determined by how much CPU th
 
 | Scenario | Licensed cores | Oracle EE list price estimate | Exposure |
 |---|---|---|---|
-| Uncapped LPAR, no SPP limit | 64 physical cores | ~$3.04M | Maximum |
-| Capped at 8 virtual processors | 8 physical core equiv. | ~$380K | Moderate |
-| Capped at 4 physical cores | 4 physical cores | ~$190K | Minimum |
-| **Difference (uncapped vs. 4-core capped)** | 60 cores | **~$2.85M** | — |
+| Uncapped LPAR, default pool | 64 physical cores | ~$3.04M | Maximum |
+| Capped LPAR, EC 4.0 with 8 virtual processors | 4 (counted by EC) or 8 (counted by VPs), depending on interpretation (§1) | ~$190K–$380K | Moderate |
+| Capped LPAR, EC 4.0 with 4 virtual processors | 4 | ~$190K | Minimum |
+| **Difference (uncapped vs 4-core capped)** | 60 cores | **~$2.85M** | |
 
-> Assumptions: Oracle EE list price ~$47,500/processor, core factor 1.0 for Power10, no volume discounts applied. For illustrative purposes only.
+> Assumptions: Oracle EE list price ~$47,500 per processor, core factor 1.0 for
+> Power10, no discounts. For illustration only.
 
-**The single most impactful action** to reduce Oracle license exposure on IBM Power is to **set partition mode to CAPPED** and size `entitled_proc_units` to the actual peak need.
+**The single most effective action** is to **make Oracle LPARs capped**, with the
+entitled capacity and virtual processors sized to the real peak. That also
+removes the EC vs VP ambiguity.
 
 ```bash
-# Verify capped status — run on every LPAR running Oracle software
-lparstat -i | grep -E "^Mode|^Entitled Capacity|^Shared Pool|^Maximum Capacity"
-# Expected:
-# Mode                               : Capped
-# Entitled Capacity                  : 4.00   ← this is the licensed quantity (× core factor)
-# Shared Pool ID                     : 0
-# Maximum Capacity                   : 4.00   ← pool cap reinforces the limit
+lparstat -i | grep -E "^Mode|^Entitled Capacity|^Online Virtual CPUs|^Maximum Capacity|^Shared Pool ID"
+# Example of a tightly capped LPAR:
+# Mode                     : Capped
+# Entitled Capacity        : 4.00
+# Online Virtual CPUs      : 4
+# Maximum Capacity         : 4.00     <- the LPAR's maximum entitlement (DLPAR headroom), not a pool value
+# Shared Pool ID           : 0        <- default pool. For an SPP boundary, use a dedicated pool with a
+#                                        "Maximum Capacity of Pool" sized to the licences
 ```
 
 ---
@@ -453,9 +465,8 @@ lshwres -r proc -m <frame_name> --level lpar \
 lssyscfg -r prof -m <frame_name> \
   -F lpar_name,proc_mode,sharing_mode,desired_proc_units,max_proc_units,desired_procs,max_procs
 
-# Shared Processor Pool summary:
-lshwres -r procpool -m <frame_name> \
-  -F pool_name,max_pool_proc_units,curr_pool_proc_units
+# Shared processor pools (all attributes, including the pool maximum):
+lshwres -r procpool -m <frame_name>
 
 # Installed and activated processor counts (useful for CoD/CUoD tracking):
 lscod -t cap -c cuod -r proc -m <frame_name>
@@ -528,30 +539,8 @@ Oracle's licensing rule: LPM requires licenses for all physical cores on **both 
 | License all frames in mobility group | All servers in group remain fully licensed | Zero compliance risk, high cost |
 | Undocumented LPM without exemption | Oracle licensing violation | Critical |
 
-#### Disable LPM on Oracle LPARs (Recommended Technical Control)
-
-Valid for **Power9, Power10, and Power11**.
-IBM documentation: https://www.ibm.com/docs/en/power10/0000-REF?topic=POWER10_REF/p10jak/p10jak_lpar_general_lpmdisable.html
-
-```bash
-# On HMC — disable LPM for an LPAR
-chsyscfg -r lpar \
-  -m <frame_name> \
-  -i "lpar_name=<lpar_name>,migration_disabled=1"
-
-# Verify live LPAR setting
-lssyscfg -r lpar -m <frame_name> -F lpar_name,migration_disabled
-# Expected: <lpar_name>,1
-
-# Verify saved profile also reflects the setting
-lssyscfg -r prof -m <frame_name> \
-  -F lpar_name,migration_disabled
-
-# Check current migration state
-lslparmigr -r lpar -m <frame_name>
-```
-
-> After disabling LPM, save the partition profile (`mksyscfg -r prof ... -o save --force`) so the setting persists across activations.
+The recommended technical control is to disable LPM on Oracle LPARs. The HMC
+commands are in §3.
 
 ---
 
@@ -565,10 +554,11 @@ When preparing for an Oracle audit on IBM Power Systems, collect and retain:
 | LPAR processor mode (HMC live) | `lshwres -r proc -m <frame> --level lpar` | HMC |
 | Saved partition profile | `lssyscfg -r prof -m <frame>` | HMC |
 | SPP configuration | `lshwres -r procpool -m <frame>` | HMC |
+| LPM disabled flag | `lssyscfg -r lpar -m <frame> -F name,migration_disabled` | HMC |
 | Installed/activated cores | `lscod -t cap -c cuod -r proc -m <frame>` | HMC |
 | CoD activation history | `lscod -t hist -m <frame>` | HMC |
 | Server model | `prtconf \| grep "System Model"` | Inside LPAR |
-| Oracle options usage | `options_packs_usage_statistics.sql` | SQL*Plus as SYSDBA |
+| Oracle options usage | `options_packs_usage_statistics.sql` (from MOS 1317265.1) | SQL*Plus as SYSDBA |
 | Oracle software inventory | `$ORACLE_HOME/OPatch/opatch lsinventory` | Inside LPAR as oracle |
 | Active Oracle processes | `ps -ef \| grep ora_` | Inside LPAR |
 | LPM migration state | `lslparmigr -r lpar -m <frame>` | HMC |
@@ -582,8 +572,9 @@ When preparing for an Oracle audit on IBM Power Systems, collect and retain:
 ```
 [ ] LPAR Mode = Capped  (lparstat -i, lshwres live)
 [ ] Saved profile also = Capped / cap sharing mode  (lssyscfg)
-[ ] SPP max_pool_proc_units sized to licensed entitlement  (lshwres procpool)
-[ ] Profile max_proc_units close to desired_proc_units  (lssyscfg)
+[ ] Online virtual CPUs close to entitled capacity (removes the EC vs VP ambiguity)
+[ ] Dedicated SPP with maximum capacity sized to the licences, if pool licensing is used  (lshwres procpool)
+[ ] Profile max_proc_units / max_procs close to desired values  (lssyscfg)
 [ ] LPM disabled for all Oracle LPARs — or mobility group fully licensed
 [ ] lparstat -i output saved quarterly and after every config change
 [ ] HMC evidence (lshwres, lssyscfg, lscod) retained for audit readiness

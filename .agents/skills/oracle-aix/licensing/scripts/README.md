@@ -1,50 +1,48 @@
 # Oracle Licensing Scripts
 
-Scripts in this folder support Oracle licensing reviews on IBM Power Systems / AIX.
+This folder is where the scripts used for Oracle licensing reviews on IBM Power Systems / AIX go.
 
 ---
 
-## options_packs_usage_statistics.sql
+## options_packs_usage_statistics.sql (download it yourself, not redistributed)
 
-**Purpose**: Detects which Oracle Database options and management packs have been used in a database instance.
-Queries `DBA_FEATURE_USAGE_STATISTICS`, `CDB_FEATURE_USAGE_STATISTICS` (for CDBs), `V$INSTANCE`, `V$DATABASE`, and `V$VERSION`.
+**Purpose**: detects which Oracle Database options and management packs have been used in a
+database. It queries `DBA_FEATURE_USAGE_STATISTICS`, `CDB_FEATURE_USAGE_STATISTICS` (for
+CDBs), `V$INSTANCE`, `V$DATABASE`, and `V$VERSION`.
 
-**Source**: Oracle My Oracle Support (MOS) Note **1317265.1**
-Title: *"Database Options/Management Packs Usage Detection"*
-URL: https://support.oracle.com/support/?anchorId=&kmContentId=1317265&page=sptemplate&sptemplate=km-article
-*(Requires Oracle Support login)*
+**Source**: My Oracle Support (MOS) Note **1317265.1**, *"Database Options/Management Packs
+Usage Detection"*:
+https://support.oracle.com/support/?anchorId=&kmContentId=1317265&page=sptemplate&sptemplate=km-article
+*(an Oracle Support login is required)*
 
+The script is Oracle Support content, so this repository does **not** redistribute it. The
+file name `options_packs_usage_statistics.sql` in this folder is git-ignored, so a downloaded
+copy is never committed by accident.
 
-**Version note**: This copy is the original script from MOS 1317265.1, last updated Oct-2021 per its header (covers Oracle 11.2 through 21c and later).
-Oracle periodically updates the script as new options and management packs are added.
-**Always check MOS 1317265.1 for the latest version before using in a formal audit.**
+### How to get it
 
-### How to use
+1. Log in to https://support.oracle.com with your Oracle Support credentials.
+2. Open MOS Note 1317265.1, or search for "Database Options/Management Packs Usage Detection".
+3. Download the attached `options_packs_usage_statistics.sql`.
+4. Save it in this folder. Oracle updates the script as new options and packs are added, so
+   download it again before every formal review.
+
+### How to use it
 
 ```sql
--- Connect as SYSDBA (or a user with SELECT on DBA_FEATURE_USAGE_STATISTICS)
--- Run against each database instance to be reviewed
+-- Connect as a user with SELECT ANY DICTIONARY (or as SYSDBA).
+-- For a CDB, connect to CDB$ROOT so all open PDBs are reported.
+-- Run it against every database in scope.
 
--- Optional: force a fresh usage sample before running
+-- Optional: force a fresh usage sample first (usage data is otherwise refreshed about weekly)
 EXEC DBMS_FEATURE_USAGE_INTERNAL.exec_db_usage_sampling(SYSDATE);
 
--- Run the script
 @options_packs_usage_statistics.sql
+-- Output is spooled to options_packs_usage_statistics.txt in the current directory
 ```
 
 ### Disclaimer
 
-> The output of this script is **technical data only**.
-> It does not constitute a licensing compliance determination.
-> Oracle licensing obligations are governed by the contract signed between Oracle and your organization.
-> Engage your Oracle License Management Services (LMS) contact or Oracle account team for any compliance assessment.
-
----
-
-## How to obtain the script from MOS
-
-1. Log in to https://support.oracle.com with your Oracle Support credentials.
-2. Navigate to MOS Note 1317265.1 or search for "Database Options/Management Packs Usage Detection".
-3. Download the attached `options_packs_usage_statistics.sql` file.
-4. Replace the copy in this folder with the downloaded version.
-5. Update the version note in this README with the download date.
+> The script's output is **technical data only**. It is not a licensing compliance
+> determination. Your organization's Oracle contract governs your licensing obligations.
+> Ask your Oracle licensing team or Oracle account team for any compliance assessment.

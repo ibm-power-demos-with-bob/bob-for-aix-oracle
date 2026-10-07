@@ -1,22 +1,13 @@
----
-name: oracle-aix-best-practices-memory
-description: >-
-  Use when tuning AIX memory management for an Oracle database on IBM Power Systems. Covers AIX
-  memory pools, page sizes (4KB/64KB/16MB), SGA page size selection, JFS2 inode/metadata cache
-  sizing, NUMA/SRAD affinity, paging space management, and related vmo/ioo parameters. Also
-  covers DSO/MPSS page coalescing, AME, LDR_CNTRL Oracle binary page size, shrsymtab/ldedit
-  defect, terabyte segment aliasing, and AIX 7.3 / Power10 / Power11 specifics. Trigger phrases:
-  "memory tuning Oracle AIX", "SGA page size", "16MB pages Oracle", "JFS2 inode cache",
-  "NUMA Oracle Power", "lssrad", "memory pools AIX", "vmo Oracle", "paging space Oracle",
-  "minfree maxfree", "lock_sga", "ORACLE_SGA_PGSZ", "minperm maxperm", "DSO Oracle AIX",
-  "aso_active", "asoo Oracle", "LDR_CNTRL Oracle", "DATAPSIZE", "AME Oracle", "shrsymtab",
-  "ldedit Oracle", "pgz vmo", "topas -M NUMA", "svmon large pages", "AIX 7.3 Oracle memory".
----
+# Oracle on Power: Memory Tuning
 
-# Oracle Power Memory Tuning
-
-Expert guidance for AIX memory tuning specific to Oracle Database on IBM Power Systems (Power9/Power10/Power11).
-Source: IBM Power Systems VUG May 2024 sessions by Ralf Schmidt-Dannert, IBM ATG Principal Power Specialist.
+> **Read this file for:** AIX memory pools, page sizes, SGA page size
+> (`ORACLE_SGA_PGSZ`, `LOCK_SGA`, 16 MB pages), `vmo` parameters
+> (`minfree`/`maxfree`/`minperm%`), paging space, JFS2 inode and metadata caches,
+> NUMA/SRAD, DSO/MPSS, AME, `LDR_CNTRL`, and the `shrsymtab`/`ldedit` defect.
+> **Source:** IBM Power Systems VUG May 2024 (Ralf Schmidt-Dannert, IBM ATG), for
+> Power9, Power10, and Power11.
+> **Before changing any `vmo`, `ioo`, or `asoo` tunable**, check that it exists
+> and show its default and type with `vmo -L <tunable>`.
 
 ---
 
@@ -74,12 +65,14 @@ On older Oracle releases this must be set explicitly:
 # For Oracle < 12.1: enable 64KB pages for Oracle binary (set in oracle user environment)
 export LDR_CNTRL=DATAPSIZE=64K@TEXTPSIZE=64K@STACKPSIZE=64K
 
-# Verify Oracle process is using 64KB pages
-ps -Z -p $(pgrep -x oracle | head -1)
-# 'K' in output = 64KB pages; 'k' = 4KB pages
+# Verify an Oracle process is using 64KB pages (pgrep is not part of base AIX)
+ps -Z -p $(ps -e -o pid,comm | awk '$2=="oracle"{print $1; exit}')
+# DPGSZ / SPGSZ / TPGSZ columns (data / stack / text) show 4K, 64K or 16M
 ```
 
-> **`pgz_*` vmo parameters** (AIX 7.2 TL2+): A set of page granularity zone parameters (`pgz_*`) was introduced in AIX 7.2 TL2 for controlling fine-grained page size zones. Review `vmo -a | grep pgz` on your system. IBM ATG recommends keeping defaults unless specifically guided by IBM support.
+> **`pgz_*` vmo tunables:** these control page zeroing. Check what they mean at
+> your level with `vmo -h pgz_mode`, and keep the defaults unless IBM Support
+> advises otherwise.
 
 ### The PSMD and LRUD Processes
 - **PSMD** (`psmd` process): converts between 4KB ↔ 64KB pages on free/used lists. Active PSMD = conflicting page-size demand (file cache vs. Oracle SGA). Consider reducing `maxperm%` to give 64KB pages more room.
@@ -95,14 +88,14 @@ ps -Z -p $(pgrep -x oracle | head -1)
 | Parameter | Recommended | AIX 7.x Default | Notes |
 |---|---|---|---|
 | `esid_allocator` | 1 | 1 | Enhanced segment ID allocator. Keep at default. |
-| `minperm%` | 3 | 3 | Minimum file cache %. When file cache drops below this, computational pages can be stolen. Do not reduce below default in Oracle environments. |
+| `minperm%` | 3 | 3 | Minimum file cache %. While the file cache is above this, LRUD steals file pages before computational pages. Lowering it to 2 is a measured emergency option against paging (see Quick Actions below). |
 | `maxperm%` | 90 | 90 | Maximum file cache %. Reduce if 64KB page starvation occurs. |
 | `maxclient%` | 90 | 90 | Maximum client file cache %. |
 | `strict_maxclient` | 1 | 1 | |
 | `strict_maxperm` | 0 | 0 | Keep at default 0. |
 | `lru_file_repage` | 0 | N/A (AIX 7.x) | AIX 6.1 only; leave at 0 on AIX 7.x. |
-| `minfree` | `max(960, 120 × logical_CPUs) / num_pools` | 960 | Per pool. Increase if `vmstat` `fre` column approaches zero. |
-| `maxfree` | `minfree + min(1024, (max(maxpgahead, j2_maxPageReadAhead) × logical_CPUs / num_pools))` | 1088 | Do not reduce below default. |
+| `minfree` | `max(960, 120 × logical_CPUs / num_pools)` | 960 | Per pool. Increase if the `vmstat` `fre` column approaches zero. |
+| `maxfree` | `minfree + min(1024, max(maxpgahead, j2_maxPageReadAhead) × logical_CPUs / num_pools)` | 1088 | Must always be greater than `minfree`. Change both in one command. |
 | `maxpin%` | Leave at default | 90% (AIX 7.x) | **Do not modify.** Changing this can interfere with 16MB page allocation. AIX 6.1 default is 80%. |
 | `vmm_klock_mode` | 2 | 2 (AIX 7.x) | Kernel memory locking. `0`=disabled; `1`=AME-only; `2`=all kernel memory types (recommended for Oracle RAC and any pinned SGA); `3`=kernel stacks only. AIX 6.1 prerequisite: TL6 SP5+ and APAR IZ95744. |
 | `v_pinshm` | 1 (when using 16MB pages) | 0 | Must be set to `1` when allocating 16MB pages for Oracle SGA. Leave at `0` if not using 16MB pages. |
@@ -113,20 +106,29 @@ ps -Z -p $(pgrep -x oracle | head -1)
 | `enhanced_affinity_private` | 40% (AIX 6.1 TL6+ / AIX 7.x default) | 40% | % of app private data allocated locally. Restricted parameter -- do not change unless guided by IBM support. AIX 6.1 TL5 default was 20%. |
 
 ```bash
-# Apply minfree/maxfree (example: 10 logical CPUs, SMT2, 2 pools, maxpgahead=8, j2_maxPageReadAhead=128)
-# minfree = max(960, 120x10x2/2) = 1200
-# maxfree = 1200 + min(1024, (128x10x2/2)) = 2024
-vmo -p -o minfree=1200 -o maxfree=2024
+# Example: 10 cores at SMT2 = 20 logical CPUs, 2 memory pools,
+#          maxpgahead=8, j2_maxPageReadAhead=128
+# minfree = max(960, 120 x 20 / 2)               = max(960, 1200) = 1200
+# maxfree = 1200 + min(1024, 128 x 20 / 2)       = 1200 + min(1024, 1280) = 2224
+vmo -L minfree; vmo -L maxfree                   # record the current values first
+vmo -p -o minfree=1200 -o maxfree=2224           # change both together (maxfree > minfree)
+# Revert: vmo -p -o minfree=<old> -o maxfree=<old>   (or: vmo -p -d minfree -d maxfree for the defaults)
 
 # Check perm page usage
 vmstat -v | grep -E 'perm|free'
 ```
 
 ### Addressing Paging Space Issues (Quick Actions)
-1. Reduce `minperm%` from 3 to 2 (`vmo -p -o minperm%=2`) — frees more memory for computational pages.
-2. Reduce Oracle `sga_target` or `pga_aggregate_target` temporarily.
-3. Free unused 16MB pages if over-allocated (`vmo -p -o lgpg_regions=<N>`).
-4. DLPAR: dynamically add memory to the LPAR.
+1. Lower `minperm%` from 3 to 2 (`vmo -p -o minperm%=2`). This lets the file
+   cache shrink further before computational pages are stolen. Measure before and
+   after.
+2. Reduce Oracle `sga_target` or `pga_aggregate_target` (or `pga_aggregate_limit`)
+   temporarily. Record the old values for the revert.
+3. Release unused, over-allocated 16 MB pages: dynamically with
+   `vmo -p -o lgpg_regions=<N> -o lgpg_size=16777216`, or persistently from the
+   next boot with `-r` and then `bosboot -a`. Only release pages the SGA doesn't
+   use (check `svmon -G`).
+4. DLPAR: add memory to the LPAR dynamically.
 
 **Paging Space Sizing Rule-of-Thumb:**
 | Physical Memory | Max Paging Space |
@@ -161,8 +163,11 @@ ioo -a | grep -E 'j2_inodeCacheSize|j2_metadataCacheSize'
 
 1. Count inodes currently on the server:
    ```bash
-   df | awk '/jfs2/{sum+=$7} END{print sum}'   # Sum 'Iused' column for JFS2 filesystems
-   # Or (slow but thorough): find / | wc -l
+   # Sum the Iused column (5th column of AIX df) over all JFS2 filesystems
+   for fs in $(lsfs -c -v jfs2 | awk -F: '!/^#/{print $1}'); do
+     df "$fs" | awk 'NR==2{print $5}'
+   done | awk '{s+=$1} END{print s}'
+   # Or (slow but thorough): find / -xdev | wc -l   (run per filesystem)
    ```
 2. Add headroom for temp files (e.g., +50,000–100,000): `reqInode`
 3. Calculate required MB: `reqMB = reqInode / 1000`
@@ -193,18 +198,17 @@ ioo -p -o j2_inodeCacheSize=17 -o j2_metadataCacheSize=17
 ### NUMA Topology by Model
 | Model | Local | Near | Far |
 |---|---|---|---|
-| Power S924 (Power9) | Same chip | Other chip | N/A (single socket) |
-| Power E850 (Power9) | Same chip | Other chip, same socket | Other socket |
-| Power E950 (Power9) | Same chip | Other chip, same node | N/A |
-| Power E880/E980 (Power9) | Same chip | Other chip, same node | Different node |
-| Power S1014 (Power10) | Same chip | Other chip, same socket | N/A |
+| Power S924 (Power9, 2 sockets) | Same chip | Other socket | N/A |
+| Power E950 (Power9, 4 sockets) | Same chip | Other chip, same node | N/A |
+| Power E980 (Power9, multi-node) | Same chip | Other chip, same node | Different node |
+| Power S1014 (Power10, 1 socket) | Same chip | Other chip in the module | N/A |
 | Power E1050 (Power10) | Same chip | Other chip, same socket | Other socket |
-| Power E1080 (Power10) | Same chip | Other chip, same node | Different node |
-| Power E1150 (Power11) | ⚠ Topology not documented in May 2024 source. E1150 is a 4U rack server (up to 120 cores, 16TB) — expected multi-node similar to E1080. Confirm with `lssrad -va` on live system. | likely Same chip | likely Different node |
-| Power E1180 (Power11) | ⚠ Topology not documented in May 2024 source. E1180 is a full-rack enterprise server — multi-node architecture confirmed by IBM product page ("scale-up"). Confirm with `lssrad -va` on live system. | likely Same chip | likely Different node |
-| Power S1112 (Power11) | ⚠ Topology not documented in May 2024 source. S1112 is a 2U compact server (up to 512GB DDR5) — single-node architecture expected. Confirm with `lssrad -va`. | Same chip | N/A (expected) |
+| Power E1080 (Power10, multi-node) | Same chip | Other chip, same node | Different node |
+| Power11 servers | The May 2024 source doesn't cover them. Enterprise models such as the E1180 are multi-node like the E1080. **Always confirm with `lssrad -va`** on the live LPAR | | |
 
-> POWER9 is always Single Chip Module (SCM). POWER10 is available in SCM and DCM (Dual Chip Module) versions.
+> Scale-out Power9 uses single-chip modules (SCM). Power10 and Power11 come in SCM
+> and dual-chip module (DCM) packaging, so one socket can hold two chips (two
+> SRADs).
 
 On a poorly configured large LPAR (e.g., E1080 with 3 CEC nodes assigned): `lssrad -va` may show SRADs with **0 local memory** — every process on those SRADs suffers far-memory latency on every access. This is a critical misconfiguration.
 
@@ -252,39 +256,41 @@ vmo -a | grep enhanced_affinity_private   # Default 40% in AIX 7.x / AIX 6.1 TL6
 
 ### Allocating 16MB Pages — Full Procedure
 
-**Formula for required 16MB page count:**
+**Prerequisite: use ASMM, not AMM.** Automatic Memory Management
+(`MEMORY_TARGET` / `MEMORY_MAX_TARGET`) can't be combined with `LOCK_SGA=TRUE`
+(startup fails with ORA-00847), and the PGA never uses SGA large pages. With
+16 MB pages, use `SGA_TARGET` / `SGA_MAX_SIZE` plus `PGA_AGGREGATE_TARGET` (and
+`PGA_AGGREGATE_LIMIT`).
+
+**Required 16 MB page count:**
 ```
-# Standard (ASMM / sga_max_size):
 lgpg_regions = ROUNDUP[(sga_max_size_MB - 1) / 16, 0] + 3
-
-# AMM (memory_max_target): use memory_max_target instead of sga_max_size
-lgpg_regions = ROUNDUP[(memory_max_target_MB - 1) / 16, 0] + 3
+# i.e. lgpg_regions x 16 MB >= sga_max_size + 48 MB. Sum over all instances that use 16 MB pages in the LPAR.
 ```
-
-> When AMM (`MEMORY_TARGET` / `MEMORY_MAX_TARGET`) is in use, large pages must cover **both SGA and PGA** combined — use `memory_max_target` not `sga_max_size` for the calculation.
 
 ```bash
-# Step 1: allocate at boot time (use -r, not -p — requires reboot)
+# Step 1: reserve the pages from the next boot (-r is the most reliable; a dynamic
+#         -p allocation can succeed only partly on a fragmented system)
 vmo -r -o lgpg_regions=<calculated_count> -o lgpg_size=16777216
 
-# Step 2: enable SGA pinning for oracle user (both oracle and grid for RAC)
+# Step 2: allow pinned shared memory (needed for LOCK_SGA with 16 MB pages)
 vmo -p -o v_pinshm=1
 
-# Step 3: grant required AIX capabilities to oracle (and grid for RAC)
-chuser capabilities=CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE oracle
-chuser capabilities=CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE grid
+# Step 3: the oracle and grid owners need CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE
+#         (see os-prereqs.md §4):  lsuser -a capabilities oracle grid
 
-# Step 4: regenerate boot image and reboot (required because -r was used)
+# Step 4: rebuild the boot image and reboot (required because -r was used)
 bosboot -a
-# then reboot the LPAR
+# then reboot the LPAR in the change window
 
-# Step 5: verify after reboot
-nmon   # press 'M' key: look for "Large Page" section
-# Rule: sga_max_size + 3x16MB must be <= lgpg_regions (nmon will show this clearly)
+# Step 5: verify after the reboot
+vmo -L lgpg_regions                  # BOOT/CUR = the calculated count
+svmon -G                             # "L 16 MB" row: PoolSize (allocated) vs inuse (used by the SGA)
 
-# Alternative verification (find ora_smon PID first):
-svmon -P $(ps -elf | grep "ora_smon_${ORACLE_SID}" | grep -v grep | awk '{print $4}') | grep shmat
-# Output containing 'L' in the flags column confirms 16MB page usage
+# Per-instance check (find the ora_smon PID first)
+SMON_PID=$(ps -e -o pid,args | awk -v s="ora_smon_${ORACLE_SID}" '$2==s{print $1}')
+svmon -P "$SMON_PID" | grep -i shmat
+# Segments with page size 'L' (16 MB) confirm the SGA uses large pages
 ```
 
 > **Do not modify `maxpin%`** from its default (90% on AIX 7.x, 80% on AIX 6.1). Changing it can interfere with large page allocation.
@@ -342,7 +348,7 @@ DSO transparently coalesces 64KB pages into temporary 16MB pages for shared memo
 | AIX 7.2 | Power8 | TL01 SP2+ |
 | AIX 7.2 | Power9 | TL3+ |
 | AIX 7.3 | Power10 | TL1+ |
-| AIX 7.3 | Power11 | ⚠ Not explicitly confirmed in source. NX GZIP blog ("Power10 or later") implies the same NX unit is present; DSO expected to work in POWER11 native compat mode. Verify `lssrc -s aso` + IBM Support #7240644. |
+| AIX 7.3 | Power11 | Not covered by the May 2024 source. Check `lssrc -s aso` and the AIX release notes for your TL (IBM Support note 7240644). |
 
 > **AIX 7.3 default**: `aso_active=1` is the **default** in AIX 7.3. Explicit enable is only needed on AIX 7.2 and earlier.
 
@@ -385,7 +391,9 @@ Large Segment Aliasing (1TB per SLB entry) eliminates this — each SLB entry ad
 - Enabled by default on AIX 7.1, 7.2, and 7.3.
 - **`shm_1tb_unsh_enable=0`** is recommended for Oracle DB environments. This is already the default as of AIX 6.1 TL7 SP5+, AIX 7.1 TL1 SP5+, AIX 7.2, and AIX 7.3.
 - **Oracle 11.2.0.3 specific issue**: An unshared memory bug exists documented in APAR IV23859 and Metalink note 1467807.1. Ensure `shm_1tb_unsh_enable=0` on any system running Oracle 11.2.0.3.
-- Oracle 11.2.0.3 also requires an Oracle-side bug fix for bug #147645450.
+- Oracle 11.2.0.3 also needs an Oracle-side bug fix. The source quotes bug
+  "147645450", which looks mistyped, so take the bug number from MOS note
+  1467807.1.
 - AIX 7.1 32-bit processes may need fix for APAR IV11261.
 
 ```bash
@@ -408,8 +416,10 @@ vmo -a | grep shm_1tb_unsh_enable
 - If AME is enabled: Oracle SGA will be mapped with 4KB pages (not 64KB) unless `ame_mpsize_support=1`. This significantly increases SLB fault risk for large SGAs.
 
 ```bash
-# Estimate AME benefit and CPU overhead before enabling
-amepat -m <expansion_factor>   # e.g. amepat -m 1.5 for 50% expansion
+# Estimate the AME benefit and CPU overhead before enabling: monitor a
+# representative workload for <minutes>
+amepat <minutes>                      # e.g. amepat 60
+amepat -e 1.2:2.0:0.2 <minutes>       # evaluate a range of expansion factors (check: man amepat)
 
 # Check AME settings
 lparstat -i | grep -i AME
@@ -452,8 +462,9 @@ vmstat -v | grep -E 'pool|perm|free'
 # PSMD activity (conversion between page sizes — should not be persistently high)
 ps -ef | grep psmd
 
-# LRUD activity
-vmstat 5          # watch 'pi' (page-in) and 'po' (page-out) columns
+# LRUD (page stealing) activity
+vmstat 5          # 'fr' (pages freed) and 'sr' (pages scanned): sustained high sr/fr = LRUD busy
+                  # 'pi'/'po' = paging-space page-ins/outs: goal is 0 for Oracle
 
 # NUMA placement
 lssrad -va
@@ -483,8 +494,10 @@ IBM Power Systems Virtual User Group, May 2024:
 
 ### AIX 7.3 / Power11 Coverage Notes
 - **AIX 7.3 confirmed**: DSO `aso_active=1` default; TL2+ hot-page-only conversion behaviour.
-- **Power11 (E1150, E1180, S1112)**: NUMA topology and DSO/AME support on Power11 are **not covered** in the May 2024 source (deck predates Power11 announcement Oct 2024).
-  - Always verify Power11 specifics via IBM Support #7240644 (AIX on Power11 supported levels) and IBM Support #7282898 (Power11 AIX compatibility modes).
-- **AIX 7.2 TL2+ `pgz_*`**: Page granularity zone parameters exist but are not elaborated in the source -- keep defaults.
+- **Power11**: the May 2024 source predates the Power11 announcement (July 2025)
+  and doesn't cover its NUMA topology or DSO/AME support.
+  - Always check Power11 specifics in IBM Support note 7240644 (AIX on Power11
+    supported levels) and note 7282898 (Power11 AIX compatibility modes).
+- **`pgz_*` (page zeroing) tunables**: keep the defaults.
 - **Oracle 19c on Power10/Power11**: IBM ATG noted increased NUMA sensitivity with 19c on Power10. Always run `lssrad -va` before deployment and after any DLPAR change.
 - Always cross-check with the living document: IBM Support #6825029 -- "AIX with Oracle Database on IBM Power Systems Considerations for Performance and Stability".

@@ -1,0 +1,45 @@
+---
+# Create or resize a JFS2 filesystem idempotently (absolute size) and verify it.
+# Usage: ansible-playbook -i inventory filesystem.yml -e target_hosts=aix_dev --check
+- name: Manage a JFS2 filesystem
+  hosts: "{{ target_hosts | default('aix') }}"
+  gather_facts: false
+  become: true
+  vars:
+    fs_mount: /data
+    fs_vg: datavg
+    fs_size: 20G
+  tasks:
+    - name: Ensure the filesystem exists with the requested size
+      ibm.power_aix.filesystem:
+        filesystem: "{{ fs_mount }}"
+        vg: "{{ fs_vg }}"
+        fs_type: jfs2
+        attributes: "size={{ fs_size }}"
+        auto_mount: "yes"
+        state: present
+      tags: [lvm]
+
+    - name: Ensure the filesystem is mounted
+      ibm.power_aix.mount:
+        mount_dir: "{{ fs_mount }}"
+        state: mount
+      tags: [lvm]
+
+    - name: Read filesystem attributes (read-only)
+      ansible.builtin.command:
+        cmd: "lsfs -c {{ fs_mount }}"
+      register: r_lsfs
+      changed_when: false
+      check_mode: false
+      failed_when: false
+      tags: [lvm]
+
+    - name: Assert the filesystem is defined as JFS2
+      ansible.builtin.assert:
+        that:
+          - r_lsfs.rc == 0
+          - "':jfs2:' in r_lsfs.stdout"
+        fail_msg: "{{ fs_mount }} is not a JFS2 filesystem: {{ r_lsfs.stdout | default('') }}"
+      when: not ansible_check_mode
+      tags: [lvm]

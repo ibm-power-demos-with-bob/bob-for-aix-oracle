@@ -1,522 +1,286 @@
----
-name: oracle-aix-best-practices-misc
-description: >-
-  Use for miscellaneous Oracle Database best practices on IBM Power Systems / AIX that span multiple
-  domains: Oracle 19c installation and patching on AIX, mutex spin count tuning, mark_hot for hot
-  objects, CPU utilization interpretation under SMT, RAC network configuration on AIX (HAIP,
-  IPv6 interface ordering), ASM external redundancy recommendation, pigz/zlibNX hardware compression
-  parallelism, PowerVS storage tier selection, and IBM Java embedded in Oracle. Trigger phrases:
-  "Oracle 19c install AIX", "Oracle 19c patch AIX", "_spin_count Oracle AIX", "cursor mutex X AIX",
-  "mark_hot Oracle", "Oracle CPU percent SMT", "RAC interconnect AIX", "HAIP AIX", "IPv6 RAC AIX",
-  "Oracle IBM Java update", "ASM redundancy AIX", "pigz parallelism", "zlibNX oracle aix",
-  "PowerVS Oracle storage tier",
-  "extended statistics Oracle AIX", "Oracle 19c RU apply AIX", "LMS processes RAC Power".
----
+# Oracle on Power: Miscellaneous Best Practices
 
-# Oracle Power — Miscellaneous Best Practices
-
-Supplementary guidance for Oracle Database on IBM Power Systems / AIX, covering topics not addressed
-by the CPU, memory, I/O, or licensing skills. Source: IBM Power Systems VUG May 2024 sessions by
-Ralf Schmidt-Dannert, IBM ATG Principal Power Specialist.
+> **Read this file for:** mutex contention (`cursor: mutex X`), mutex spin count,
+> `DBMS_SHARED_POOL.MARKHOT`, reading process CPU % under SMT, NUMA-related and
+> library-cache issues on large Power servers, the embedded JDK, PowerVS storage
+> tiers, pigz/zlibNX hardware compression, and known 19c issues on Power.
+> **Not here:** installation and patching are in `os-prereqs.md`, RAC networking
+> in `network-rac.md`, and ASM redundancy in `io-storage.md` §8.
+> **Source:** IBM Power Systems VUG May 2024 (Ralf Schmidt-Dannert, IBM ATG).
+> **Underscore (hidden) parameters and events in this file must only be set with
+> Oracle Support's agreement.**
 
 ---
 
-## 1. Oracle 19c Installation on AIX — Base Release + RU in One Step
+## 1. Mutex Contention and Spin Count (High-Throughput OLTP)
 
-### The Problem
+Oracle protects cursors and library cache objects with mutexes. A process that
+can't get a mutex spins for a while, then sleeps.
 
-Oracle Database 19c on AIX **must be installed from the base 19.3 release first** — you cannot
-install directly from a later Release Update (RU). However, production deployments should always
-run a recent RU (e.g., 19.22+). Installing 19.3 and then patching separately is error-prone.
+| Parameter | Controls | Default |
+|---|---|---|
+| `_mutex_spin_count` | Spins before sleeping on a **mutex** (`cursor: mutex X`, `library cache: mutex X`) | 255 |
+| `_spin_count` | Spins on a **latch** | 2000 |
 
-A common failure when attempting a combined install/patch approach:
+> The source deck labels the mutex spin value `_spin_count`. The parameter that
+> controls mutex spinning, with a default of 255, is `_mutex_spin_count`.
+> Confirm the parameter and value with Oracle Support for your release.
 
-```
-delete action destination file not writable
-```
+The default mutex spin is short for modern Power cores.
 
-This error occurs when using a naive single-installer approach that tries to apply a RU without
-the correct pre-steps.
+IBM ATG results (Swingbench OLTP):
 
-### Recommended Approach: `gridSetup` / `runInstaller` + `-applyRU` Flag
-
-Run the 19.3 base installer with the `-applyRU` flag pointing to the RU patch directory. This
-applies the Release Update **during** the installation, before the full install completes:
-
-```bash
-# Example: install Oracle Grid 19.3 with RU 19.22 applied in one step
-./gridSetup.sh \
-  -applyRU /stage/patches/34340533 \
-  -silent \
-  -responseFile /stage/grid_install.rsp
-
-# Same approach for the database home installer
-./runInstaller \
-  -applyRU /stage/patches/34340533 \
-  -silent \
-  -responseFile /stage/db_install.rsp
-```
-
-> This avoids a separate post-install patching step and ensures the home is already at the
-> current RU level before any configuration utilities (DBCA, netca) are run.
-
-### What RU to Target
-
-As of May 2024 (VUG session), **19.22** was the recommended current release. Always verify the
-latest available RU on Oracle Support (My Oracle Support) before a new deployment.
-
----
-
-## 2. Oracle Mutex and Spin Count Tuning for High-Throughput OLTP
-
-### Background
-
-Oracle uses mutexes (lightweight locks) to protect shared cursor and library cache structures.
-The mutex algorithm has a **spin phase** — a process will actively spin (loop on a CPU) for a
-configurable number of cycles before going to sleep and releasing the CPU.
-
-The default spin count (`_spin_count`) is **255** — a value set many CPU generations ago and
-intentionally very short. On modern Power processors (Power9/10/11) with their high clock
-speeds and deep caches, this value is frequently too low for high-concurrency OLTP workloads.
-
-### Symptoms of Insufficient Spin Count
-
-In AWR or `v$system_event`, a dominant wait event of:
-
-```
-cursor: mutex X
-```
-
-...combined with high **CPU "idle" time** (processes sleeping unnecessarily after short spins)
-and low actual TPS despite available CPU capacity.
-
-**Test observation (VUG May 2024, Ralf Schmidt-Dannert, IBM ATG):**
-
-| Configuration | TPS (Swingbench OLTP) |
+| Configuration | TPS |
 |---|---|
-| Default (`_spin_count=255`) | ~12,000 |
-| `_spin_count=4000` only | ~22,000 (+83%) |
-| `_spin_count=4000` + `mark_hot` on hot objects | ~38,000 (+217%) |
+| Default (255) | ~12,000 |
+| Spin count 4000 | ~22,000 (+83%) |
+| Spin count 4000 plus MARKHOT on the hottest objects | ~38,000 (+217%) |
 
-### Recommended Approach
+### Procedure
 
 ```sql
--- Step 1: Identify if cursor mutex X is a top wait event
-SELECT event, total_waits, time_waited
+-- 1. Is mutex contention a top wait?
+SELECT event, total_waits, round(time_waited_micro/1e6) seconds
 FROM   v$system_event
 WHERE  event LIKE '%mutex%'
-ORDER  BY time_waited DESC;
+ORDER  BY time_waited_micro DESC;
 
--- Step 2: Check current spin count (hidden parameter)
-SELECT name, value, description
-FROM   v$parameter
-WHERE  name = '_spin_count';
+-- 2. Current values. Hidden parameters are not in v$parameter, so query them as SYS
+SELECT i.ksppinm name, v.ksppstvl value, v.ksppstdf is_default
+FROM   x$ksppi i JOIN x$ksppcv v ON i.indx = v.indx
+WHERE  i.ksppinm IN ('_mutex_spin_count','_spin_count');
 
--- Step 3: Increase spin count (requires instance restart for spfile scope)
--- Start conservatively; 4000 is a well-tested starting point on Power9/10
-ALTER SYSTEM SET "_spin_count" = 4000 SCOPE=SPFILE;
--- Restart required for hidden parameters
+-- 3. Only with Oracle Support's agreement, and test on non-production first
+ALTER SYSTEM SET "_mutex_spin_count" = 4000 SCOPE=SPFILE;   -- takes effect at the next restart
+-- Revert: ALTER SYSTEM RESET "_mutex_spin_count" SCOPE=SPFILE;
 ```
-
-> **Note**: `_spin_count` is a hidden (underscore) parameter. Changes require thorough testing
-> on a non-production instance first. The optimal value varies with workload concurrency and
-> hardware. Values between 2000 and 8000 have been used successfully on Power9/10 systems.
 
 ---
 
-## 3. Oracle `DBMS_SHARED_POOL.MARKHOT` — Hot Object Copies
+## 2. `DBMS_SHARED_POOL.MARKHOT`: Hot Object Copies
 
-For very high-concurrency access to the same library cache object (cursor, package, package body,
-type), Oracle can create **multiple copies** of the object in the shared pool, distributing
-the mutex contention across copies.
+MARKHOT creates multiple copies of a very hot library cache object, which spreads
+the mutex contention across the copies.
 
-### When to Use
-
-- AWR shows `cursor: mutex X` or `library cache: mutex X` as top waits.
-- Hot objects are **pinned and highly executed** (confirmed via the query below).
-- `_spin_count` increase alone does not eliminate the wait event.
-
-### Identifying Hot Objects
+**Use it when:**
+- `cursor: mutex X` or `library cache: mutex X` is a top wait, **and**
+- a few objects have extreme execution counts, **and**
+- raising the spin count alone didn't remove the wait.
 
 ```sql
--- Objects that are good candidates for mark_hot
--- Look for: pinned=YES, execute_count very high
-SELECT object_name, object_type, kept, loads, executions, invalidations
+-- Candidate objects
+SELECT owner, name, type, namespace, executions, loads, kept
 FROM   v$db_object_cache
-WHERE  kept = 'YES'
-  AND  executions > 100000
-ORDER  BY executions DESC;
+WHERE  executions > 100000
+  AND  type IN ('PACKAGE','PACKAGE BODY','TYPE','TYPE BODY','TRIGGER','FUNCTION','PROCEDURE')
+ORDER  BY executions DESC
+FETCH FIRST 20 ROWS ONLY;
 
--- Generate the mark_hot commands for top candidates
-SELECT 'EXECUTE DBMS_SHARED_POOL.MARKHOT(''' || name || ''', ' ||
-       CASE type
-         WHEN 'PACKAGE'      THEN '1'
-         WHEN 'PACKAGE BODY' THEN '2'
-         WHEN 'TRIGGER'      THEN '3'
-         WHEN 'TYPE'         THEN '4'
-         ELSE '1'
-       END || ');' AS cmd
+-- Generate MARKHOT calls. Signature: MARKHOT(schema, objname, namespace).
+-- Library cache namespaces: 1 = TABLE/PROCEDURE (package/type spec, function,
+-- procedure), 2 = BODY (package/type body), 3 = TRIGGER
+SELECT 'EXEC DBMS_SHARED_POOL.MARKHOT(''' || owner || ''', ''' || name || ''', ' ||
+       CASE WHEN type IN ('PACKAGE BODY','TYPE BODY') THEN 2
+            WHEN type = 'TRIGGER' THEN 3
+            ELSE 1 END || ');' AS cmd
 FROM   v$db_object_cache
-WHERE  kept = 'YES'
-  AND  executions > 500000
-  AND  type IN ('PACKAGE','PACKAGE BODY','TRIGGER','TYPE')
+WHERE  executions > 500000
+  AND  type IN ('PACKAGE','PACKAGE BODY','TYPE','TYPE BODY','TRIGGER','FUNCTION','PROCEDURE')
 ORDER  BY executions DESC
 FETCH FIRST 10 ROWS ONLY;
 ```
 
-### Applying MARKHOT
-
 ```sql
--- Mark a specific package as hot (creates multiple copies in shared pool)
-EXECUTE DBMS_SHARED_POOL.MARKHOT('SYS.DBMS_SQL', 1);   -- 1 = PACKAGE
-EXECUTE DBMS_SHARED_POOL.MARKHOT('SYS.DBMS_SQL', 2);   -- 2 = PACKAGE BODY
-
--- Unmark (remove extra copies)
-EXECUTE DBMS_SHARED_POOL.UNMARKHOT('SYS.DBMS_SQL', 1);
+EXEC DBMS_SHARED_POOL.MARKHOT('SYS', 'DBMS_SQL', 1);     -- package spec
+EXEC DBMS_SHARED_POOL.MARKHOT('SYS', 'DBMS_SQL', 2);     -- package body
+-- Revert:
+EXEC DBMS_SHARED_POOL.UNMARKHOT('SYS', 'DBMS_SQL', 1);
+EXEC DBMS_SHARED_POOL.UNMARKHOT('SYS', 'DBMS_SQL', 2);
 ```
 
-### ⚠️ Caution: Do Not Over-apply MARKHOT
-
-Marking too many objects as hot can cause Oracle Enterprise Manager and internal dictionary
-queries to run for **minutes** because the object list in `v$db_object_cache` becomes
-excessively large. Apply only to the 3–10 most contended objects, not to every hot object.
-
-> **Sequences cannot be marked hot.** Only packages, package bodies, triggers, and types
-> are supported.
+> **Don't overuse it.** Marking many objects can make Enterprise Manager and
+> dictionary queries on `v$db_object_cache` take minutes. Limit it to the 3–10
+> most contended objects. Sequences can't be marked hot.
+> MARKHOT is not persistent across instance restarts: re-apply it at startup, for
+> example from a startup trigger or job.
 
 ---
 
-## 4. CPU Utilization Interpretation Under SMT on Power
+## 3. Reading Process CPU % Under SMT
 
-### The Problem
+`topas` and `nmon` report a process's CPU % relative to the **whole LPAR's
+capacity**, and AIX accounts CPU time with PURR. What a single fully CPU-bound
+thread shows therefore depends on how busy the other SMT threads of its core are.
 
-When using `topas` or `nmon` (the `t` key or process CPU view) on an AIX Power system,
-the percentage shown for a single Oracle process is **relative to the total logical CPU count**,
-not to a single physical core or thread.
+On a 4-core LPAR at SMT8 (32 logical CPUs):
 
-On an SMT8 system with 4 physical cores (= 32 logical CPUs):
-- A **fully CPU-bound** process running at maximum speed on one logical CPU appears as
-  approximately **3.1%** (1/32 × 100%) in `topas`/`nmon`.
-- The same process on SMT1 would show **~99.8%**.
-
-### Consequence for Oracle Tuning
-
-If you see an Oracle process at "32%" CPU, it is likely **fully CPU-bound** on one thread on
-an SMT8 system — not merely moderately busy. Misreading this leads to wrong conclusions.
-
-**The ratio differs between Power generations** — test and document the expected "100% CPU"
-value for your specific platform:
-
-```bash
-# Test script: run a single-threaded CPU loop and observe the topas/nmon %CPU
-# The % reported when the process is clearly CPU-bound = your "100% reference" for this LPAR
-
-# Simple CPU spin test (run in background, observe with topas)
-perl -e 'while(1) {}' &
-SPIN_PID=$!
-topas    # Observe % CPU for the perl process — this is your "1 logical CPU = X%" reference
-kill $SPIN_PID
-
-# Document the result:
-# Power9 SMT8  (4 cores, 32 threads):  ~3.1% per fully loaded thread in topas
-# Power10 SMT8 (4 cores, 32 threads):  value differs — re-measure
-# Power11 SMT8 (4 cores, 32 threads):  re-measure after migration
-```
-
-**Observed ratios differ between Power8, Power9, and Power10** — always re-baseline after
-a hardware migration.
-
-> **Rule of thumb**: divide 100 by the logical CPU count of the LPAR to get the approximate
-> `topas` % for a single fully CPU-bound process. But measure empirically — the actual ratio
-> varies with hardware generation.
-
----
-
-## 5. RAC Network Configuration on AIX
-
-### HAIP vs. LACP/NIB for RAC Interconnect
-
-| Option | When to Use | Notes |
-|---|---|---|
-| **HAIP** (Oracle High Availability IP) | Active-active interconnect HA | Oracle's native method; distributes I/O across interfaces; no switch-level LACP required |
-| **LACP** (802.3ad Link Aggregation) | Bundling ports for higher throughput AND HA | Requires capable switch; switch and NIC must both support it |
-| **EtherChannel/NIB** | Active-passive NIC bonding | Simpler; lower latency; failover only |
-
-- For RAC interconnect with **active-active HA** requirements: prefer **HAIP**.
-- For environments requiring higher aggregate throughput on the interconnect: LACP if supported.
-
-```bash
-# HAIP configuration is managed by Oracle Clusterware:
-# Verify HAIP interfaces in Oracle GI:
-srvctl config nodeapps -n $(hostname)
-
-# In AIX, verify NIB (Network Interface Backup) or EtherChannel:
-lsdev -Cc adapter | grep ent
-entstat -d en0   # Shows adapter statistics including bond details
-```
-
-### IPv6 Interface Ordering Issue in PowerVS (RAC)
-
-**Symptom**: Oracle RAC installation or cluster verification fails due to the installer detecting
-IPv6-only interfaces (or interfaces with no IP) before the IPv4 interfaces configured for the
-RAC public network and interconnect.
-
-**Root cause**: PowerVS LPARs expose additional management interfaces (e.g., for NovaLink or
-internal use) that may appear in the OS interface list before `en0/en1/en2`. Oracle RAC's
-installation and detection code iterates interfaces in enumeration order and can select the
-wrong interface even if explicitly told not to.
-
-**Fix**: Use `rendev` to rename/reorder network interfaces so that the IPv4 interfaces intended
-for RAC (public, private, VIP) appear **first** in the OS enumeration list (e.g., `en0`, `en1`,
-`en2`) before any IPv6-only or unaddressed interfaces.
-
-```bash
-# List current network interfaces
-lsdev -Cc adapter | grep ent
-ifconfig -a | grep -E "^en|inet|inet6"
-
-# Check interface enumeration order (affects Oracle RAC detection)
-odmget CuAt | grep -A5 "name = \"en"
-
-# Rename an interface (example: renumber en5 to en2 if en2 is free)
-rendev -l en5 -n en2
-
-# After renaming, verify:
-ifconfig -a
-lsdev -Cc adapter | grep ent
-```
-
-> **Workaround**: If renaming is not practical, during Oracle installation explicitly provide
-> interface names for public, private, and VIP. However, even with explicit specification,
-> Oracle RAC has been observed to still pick up unwanted interfaces — renaming is more reliable.
-
-### TCP Loopback Optimization (Same-LPAR Client/Server)
-
-For Oracle client processes connecting to a database in the **same LPAR** (e.g., batch jobs,
-application server co-located with the database):
-
-```bash
-# Enable TCP fast loopback (shortcut for loopback-address connections within the LPAR)
-no -p -o tcp_fastlo=1
-
-# Verify
-no -a | grep tcp_fastlo
-```
-
-### Cache Routes (DNS Lookup Optimization)
-
-Slow DNS lookups (even for `localhost` or `/etc/hosts` entries) can add latency to every new
-Oracle connection. The AIX `cacheroutes` feature caches IP routes:
-
-```bash
-# Verify cacheroutes status
-no -a | grep routecache
-
-# There have been known issues with cacheroutes in some AIX versions —
-# review the APAR list for your AIX TL before enabling in production.
-# Check: IBM Support for cacheroutes-related APARs on your AIX 7.2 TL5+ or 7.3 level
-```
-
-### Large Send Offload (Network)
-
-For network-intensive Oracle workloads (Data Guard redo shipping, RMAN over network, RAC
-interconnect) on Power Systems:
-
-```bash
-# Check Large Send Offload setting on ethernet adapter
-entstat -d en0 | grep -i "large send"
-
-# Review IBM documentation for LSO configuration specific to your adapter type
-# (configuration varies: SEA, VNIC, physical ent)
-```
-
----
-
-## 6. ASM Redundancy — External Recommended for Enterprise Storage
-
-When Oracle ASM is deployed on top of enterprise storage (IBM FlashSystem, Pure Storage, HPE
-Primera, etc.):
-
-| Storage Type | Recommended ASM Redundancy | Reason |
-|---|---|---|
-| Enterprise SAN (FlashSystem, etc.) | **External** | Storage has built-in RAID and controller HA; ASM redundancy doubles I/O with no benefit |
-| Internal disks (JBOD, no RAID) | Normal or High | No hardware redundancy below ASM |
-| NVMe in server (no external HA) | Normal | Limited paths; hardware redundancy limited |
-
-```sql
--- Create disk group with external redundancy (recommended for enterprise SAN)
-CREATE DISKGROUP data
-  EXTERNAL REDUNDANCY
-  DISK '/dev/roradg_lv01','/dev/roradg_lv02','/dev/roradg_lv03','/dev/roradg_lv04',
-       '/dev/roradg_lv05','/dev/roradg_lv06','/dev/roradg_lv07','/dev/roradg_lv08'
-  ATTRIBUTE 'compatible.asm' = '19.0',
-            'compatible.rdbms' = '19.0',
-            'au_size' = '4M';    -- or 8M for large DW databases
-```
-
-> With external redundancy, ASM does not mirror data. All I/O goes to a single copy, maximizing
-> throughput. The storage array's internal RAID protects against physical disk failure.
-
----
-
-## 7. `pigz` Hardware Compression — Optimal Parallelism
-
-Power9, Power10, and Power11 include **NX GZIP hardware acceleration** in each processor core.
-The `pigz` command (parallel gzip, open source) uses the **`zlibNX`** library on AIX 7.2 TL4+
-to leverage this hardware acceleration. `pigz` is part of AIX base media since AIX 7.2 TL5 SP2+.
-
-> **Important correction (VUG slide 71)**: Use **`pigz`** (uses `zlibNX`), **not** `xgzip`
-> (deprecated, single-threaded) and **not** `pixz` (parallel xz — different tool, does not use `zlibNX`).
-
-### Parallelism Setting
-
-The default parallelism `pigz` selects (based on logical CPU count) is often **not optimal**.
-Testing shows that **parallelism = 8** provides the best throughput on Power systems:
-
-```bash
-# Optimal invocation for Power9/10/11 hardware-accelerated compression:
-pigz -p 8 /path/to/backupfile.bkp
-
-# -p 8 = 8 parallel compression threads (optimal for Power NX gzip engines)
-
-# Do NOT use xgzip — it is single-threaded and deprecated
-# Avoid the default parallelism (auto-detected from logical CPU count = too many threads)
-```
-
-### Throughput Reference (VUG May 2024 Test, IBM ATG — E980, 16 cores, ~230GB data)
-
-| Config | Compression speed |
+| Situation | Approximate % for one fully busy thread |
 |---|---|
-| `tar \| gzip` (single-threaded) | 3h 15m for ~230 GB |
-| `tar \| pigz -p 8` | **4m 31s** — >43× faster |
-| `xgzip` (deprecated, single-threaded) | Similar to `gzip`; deprecated |
+| Other threads on its core idle | Up to about **100 / cores = 25%**, because the thread gets most of the core's cycles |
+| All threads on all cores busy | About **100 / logical CPUs ≈ 3.1%** |
+
+So a "low" percentage doesn't mean a process is idle. To confirm a CPU-bound
+process, check its state over time (`ps -o pid,stat,time,args`), and look at the
+AWR CPU time for its session.
+
+### Create a reference for your LPAR
+
+The ratio differs by Power generation and SMT mode. Re-measure after hardware
+migrations.
 
 ```bash
-# Must be in correct LPAR compatibility mode for hardware acceleration:
-lparstat -i | grep -i "compat"
-# Power9:  POWER9 compat mode (NOTE: POWER9_Base mode DISABLES the NX accelerator)
-# Power10: POWER9, POWER9_Base, or POWER10 compat mode
-# Power11: POWER9, POWER10, or POWER11 native mode (AIX 7300-03-01+)
-
-# Verify the accelerator is actually available in this LPAR:
-nxstat -S
-# nx_accel_mask = 1  -> accelerator available
-# nx_accel_mask = 0  -> NOT available — check compat mode
-
-# Typical use cases:
-# - Compress RMAN backup pieces after creation
-# - Compress archive log files before shipping to tape/object storage
-# - Data export compression
+perl -e 'while(1){}' &      # one CPU-bound thread
+SPIN_PID=$!
+topas                       # note the %CPU shown for this PID on an otherwise quiet LPAR
+kill "$SPIN_PID"
 ```
 
 ---
 
-## 8. PowerVS Storage Tier Selection for Oracle
+## 4. Large Power Servers: NUMA and Library Cache Issues
 
-IBM Power Virtual Server (PowerVS) provides IOPS-tiered storage. Choosing the wrong tier is the
-most common cause of unexpected I/O performance issues in PowerVS Oracle deployments.
+These apply to LPARs spanning several SRADs, such as large E1080, E1150, or E1180
+LPARs. **Check the placement first** with `lssrad -va` and `mpstat -d 1 30` (see
+`memory.md` §4).
 
-### Recommended Starting Tiers
+- **`_gc_numa_lock_elements` (RAC):** IBM ATG measured a negative effect with
+  TRUE. Leave it at its default.
+- **`_numa_buffer_cache_stats`:** the source suggests 0 to reduce overhead on
+  large systems. Only set it with Oracle Support's agreement:
 
-| Oracle File Type | PowerVS Storage Tier | Reason |
+```sql
+-- Hidden parameters: query them as SYS (see §1), never change them without Oracle Support
+SELECT i.ksppinm, v.ksppstvl, v.ksppstdf
+FROM   x$ksppi i JOIN x$ksppcv v ON i.indx = v.indx
+WHERE  i.ksppinm IN ('_gc_numa_lock_elements','_numa_buffer_cache_stats');
+```
+
+- **High `kxsgetruntimelock` / `sskgslcas` CPU in AWR on large Power10
+  (19c < 19.20):** the fixes are in Oracle patches 32869560, 33380871, 33608329,
+  and 29780459, which are all included in **19.20 and later**. Run 19.20 or later
+  on large Power10 systems. Don't use diagnostic events as a workaround without
+  Oracle Support.
+
+- **Real-time statistics:** high CPU and mutex contention from statistics
+  gathering on conventional DML was reported on large Power10 servers with early
+  19c RUs. The `optimizer_real_time_statistics` parameter exists only from 19.10,
+  where it defaults to FALSE. On older RUs, ask Oracle Support (MOS 2747507.1)
+  rather than setting hidden parameters.
+
+---
+
+## 5. Embedded JDK in Oracle Homes: Keep It Updated
+
+Every Oracle home on AIX includes its own IBM Java (`$ORACLE_HOME/jdk`). It is
+separate from the OS Java and has its own security fixes.
+
+```bash
+$ORACLE_HOME/jdk/bin/java -version 2>&1
+```
+
+- Oracle's packaging of JDK updates has changed over time: separate quarterly JDK
+  patches, or JDK updates included in the RU. **Check the RU README** for your
+  release.
+- If the JDK isn't included, apply the separate JDK patch to **every** DB and Grid
+  home in the same patch cycle. Search MOS for "JDK and PERL patches for Oracle
+  Database Home and Fusion Middleware Home".
+
+---
+
+## 6. Known Oracle 19c Issues on Power (as of May 2024)
+
+Check the current status on My Oracle Support.
+
+| Issue | Affected | Resolution |
 |---|---|---|
-| Database data, indexes, temp | **Tier 1** (≥25,000 IOPS/LUN) | Random 8KB I/O; needs low latency and high IOPS |
-| Oracle redo logs | **Tier 1** (≥25,000 IOPS/LUN) | Sequential small I/O; extremely latency-sensitive |
-| Archive logs | **Tier 3** or **Tier 1** | Sequential write-once; Tier 3 acceptable if throughput is sufficient |
-| Oracle binaries | **Tier 3** | Low IOPS, sequential reads at startup |
-| RMAN backups | **Tier 3** | Bulk sequential I/O; IOPS density not critical |
+| Extended statistics locking (spin waits) under high-concurrency OLTP | 19c < 19.13 | 19.13 or later (prefer the current RU) |
+| Too many LMS processes on very large RAC LPARs | 19c on large Power10/Power11 | Follow MOS guidance for the LMS count on large systems. Don't change `gcs_server_processes` blindly |
+| AWR missing OS metrics with > 1031 logical CPUs | 18c / 19c | One-off patch from Oracle Support (see `cpu.md` §6) |
+| VG doesn't see grown LUNs | AIX after a SAN resize | `cfgmgr` then `chvg -g <vg>`, after checking APAR IJ46487 (`io-storage.md` §11) |
 
 ```bash
-# PowerVS CLI: create a storage volume with specific tier
-# (IBM Power Virtual Server API v1.1.1+)
-ibmcloud pi volume create data-lun-01 --size 100 --type tier1
+$ORACLE_HOME/OPatch/opatch lspatches
+ps -ef | grep "[o]ra_lms" | wc -l          # LMS process count per instance
+```
 
-# Verify volume tier assignment
+---
+
+## 7. pigz with zlibNX: Hardware-Accelerated gzip (Power9/10/11)
+
+Power9, Power10, and Power11 have an **NX GZIP accelerator**.
+
+- `pigz` (parallel gzip) uses it through the **zlibNX** library on AIX 7.2 TL4
+  and later.
+- It's on the base media from AIX 7.2 TL5 SP2 and installed by default on AIX 7.3.
+- Use `pigz`, not `xgzip` (deprecated, single-threaded) or `pixz` (xz, which
+  doesn't use NX).
+
+```bash
+lslpp -l zlibNX.rte                 # library installed?
+nxstat -S                           # accelerator availability for this LPAR
+prtconf | grep -i "Processor Implementation Mode"
+```
+
+| Hardware | Compatibility modes that enable NX GZIP |
+|---|---|
+| Power9 (firmware FW940 or later) | POWER9 |
+| Power10 | POWER9 or POWER10 |
+| Power11 | POWER9, POWER10, or POWER11 (native from AIX 7300-03-01) |
+
+**`POWER9_Base` mode disables the accelerator** on every generation.
+
+```bash
+pigz -p 8 /backup/full_01.bkp       # parallelism 8 gave the best throughput in IBM tests
+tar -cf - /u02/export | pigz -p 8 > /backup/export.tar.gz
+```
+
+- In IBM ATG tests (E980, 16 cores, about 230 GB), `tar | gzip` took 3 h 15 min
+  and `tar | pigz -p 8` took 4 min 31 s.
+- Throughput is usually limited by the I/O subsystem.
+- Higher compression levels than the default `-6` add a lot of time for little
+  gain.
+- Uses: compressing RMAN backup pieces or archived logs before shipping them, and
+  data migrations. The output is standard gzip.
+
+> **APAR IJ47907:** potential undetected data loss using zlibNX. Confirm the fix
+> is installed (`instfix -ik IJ47907`) before using it in production.
+> Reference: IBM Community, "GZIP Acceleration with AIX on Power Systems" (Brian
+> Veale, 2022).
+
+---
+
+## 8. PowerVS Storage Tiers for Oracle
+
+PowerVS tiers are rated in **IOPS per GB**, so a volume's IOPS grow with its size.
+
+| Tier | IOPS/GB | Typical Oracle use |
+|---|---|---|
+| Tier 0 | 25 | Redo logs, latency-critical OLTP data |
+| Tier 1 | 10 | Data, indexes, temp |
+| Tier 3 | 3 | Binaries, archive logs, RMAN backups |
+| Fixed IOPS | 5,000 per volume, regardless of size | Small volumes that need a guaranteed IOPS floor |
+
+Check the current tier definitions and limits in the IBM Cloud PowerVS
+documentation. They change over time.
+
+```bash
+ibmcloud pi volume create --help        # check flag names for your CLI version (tier flag)
 ibmcloud pi volume list
-ibmcloud pi volume get <volume-id>
+ibmcloud pi volume get <volume-id>      # shows the tier
 ```
 
-> **IOPS tiers are dynamically adjustable** in PowerVS — you can upgrade a Tier 3 volume to
-> Tier 1 without re-creating it. Monitor AWR average wait time for `db file sequential read`
-> (target < 1ms for flash Tier 1) and adjust tier accordingly.
+If AWR shows `db file sequential read` or `log file parallel write` above target,
+check the tier and size **before** tuning AIX. A larger volume, or a higher tier
+where PowerVS allows changing it, raises the IOPS ceiling.
 
 ---
 
-## 9. Oracle IBM Java Embedded — Keep Updated
+## 9. Key Reference Documents
 
-Oracle Database embeds its own copy of **IBM Java** (used for XML, OJVM, and other internal
-components). This embedded Java is a separate software stack from the OS Java — it has its own
-security vulnerabilities and must be updated independently.
-
-As of March 2024 (near time of VUG session), Oracle started bundling Java updates in patches:
-
-```bash
-# Identify Oracle-embedded IBM Java version
-find $ORACLE_HOME -name "java" -type f 2>/dev/null | head -3
-$ORACLE_HOME/jdk/bin/java -version 2>&1
-
-# Oracle provides downloadable IBM Java updates for the Oracle Home separately from RUs
-# Download from: My Oracle Support (MOS) — search for "IBM Java Oracle AIX"
-# Apply to the Oracle Home and Grid Home separately
-
-# After applying, verify:
-$ORACLE_HOME/jdk/bin/java -version 2>&1
-```
-
-> Apply the latest available IBM Java update to every Oracle Home (DB home, Grid home) as part
-> of your regular patching cycle — it is **not** included in standard Oracle PSUs/RUs.
-
----
-
-## 10. Known Oracle 19c Issues on Power Systems (as of May 2024)
-
-The following issues were highlighted by IBM ATG. Verify current patch status on My Oracle Support.
-
-| Issue | Versions Affected | Impact | Resolution |
-|---|---|---|---|
-| Extended statistics locking (`spin lock` waits) | 19c < 19.13 | High CPU spin waits under high-concurrency OLTP | Apply patches; upgrade to 19.13+ or 19.22+ |
-| Too many LMS processes in RAC on large systems | 19c, large Power10/Power11 configs | CPU overhead from excess GCS processes | Apply Oracle MOS Note (search "LMS processes RAC 19c large system") |
-| `changevg` requirement for VG disk size rediscovery | AIX with Oracle | If not run after SAN disk expansion, AIX does not see new space | Run `chvg -g <vgname>` after any storage subsystem LUN resize |
-| LVM / filesystem changes not honoring new LUN sizes | AIX 7.2/7.3 after SAN resize | VG commands return old size | `cfgmgr` then `chvg -g <vgname>` (see I/O skill, section 7) |
-| AWR missing server detail metrics (>1031 logical CPUs) | 19c, 18c on large Power servers | AWR incomplete — missing OS-level metrics | Oracle one-off patch per release — request via Oracle Support |
-
-```bash
-# Verify current Oracle patch level
-$ORACLE_HOME/OPatch/opatch lsinventory | grep -E "Oracle Database|Applied Patch"
-
-# For RAC: check LMS process count
-ps -ef | grep lms | grep -v grep | wc -l
-# Expected: approximately 1 per 2 physical CPUs (check MOS for your specific config)
-```
-
----
-
-## 11. Key Reference Documents (from IBM ATG)
-
-The following documents were highlighted as "must-check regularly" by Ralf Schmidt-Dannert (IBM ATG):
-
-1. **"AIX with Oracle Database and IBM Power System Considerations for Performance Stability"**
-   — IBM technical note; lists tuning parameters, known AIX APARs/PMRs affecting Oracle.
-   Contains the authoritative list of all AIX parameters discussed in these VUG sessions.
-   Search on IBM Support / developerWorks: _"AIX Oracle Database IBM Power System Performance Stability"_
-
-2. **Oracle on Power Best Practices deck (this series)**
-   — Full ~89 and ~116 slide decks available on IBM Power Systems VUG website.
-
-3. **Oracle Certification Matrix for AIX on Power**
-   — Oracle Support: verifies which Oracle versions are certified on which AIX/Power combinations.
-
-4. **Oracle Proactive Patch Program (MOS)**
-   — One-off patches and proactive recommendations specific to Oracle on AIX/Power.
-
----
-
-## Source Reference
-
-IBM Power Systems Virtual User Group, May 2024:
-- Session 1: "Oracle on Power Best Practices — Memory and CPU" (Ralf Schmidt-Dannert, IBM ATG)
-  - Deck: `OracleOnPowerTuningConsiderations_CPU_Memory_NEXT.pptx` (~89 slides)
-- Session 2: "Oracle on Power Best Practices — I/O and Miscellaneous" (Ralf Schmidt-Dannert, IBM ATG)
-  - Deck: `OracleOnPowerTuningConsiderations_AIX_IO_Misc_NEXT.pptx` (~116 slides)
-
-Items marked ⚠️ require verification — no authoritative source available at time of writing.
+1. **IBM: "AIX with Oracle Database on IBM Power Systems: Considerations for
+   Performance and Stability"**, the living document for parameters, APARs and
+   iFixes: https://www.ibm.com/support/pages/node/6825029
+2. **Oracle certification matrix** (MOS, Certifications tab).
+3. IBM Power Systems VUG decks (May 2024):
+   `OracleOnPowerTuningConsiderations_CPU_Memory_NEXT.pptx`,
+   `OracleOnPowerTuningConsiderations_AIX_IO_Misc_NEXT.pptx`.

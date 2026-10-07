@@ -1,0 +1,33 @@
+---
+# Install AIX filesets from an lpp_source directory and verify the result.
+# Usage: ansible-playbook -i inventory install-fileset.yml -e target_hosts=aix_dev --check
+- name: Install AIX filesets with installp
+  hosts: "{{ target_hosts | default('aix') }}"
+  gather_facts: false
+  become: true
+  vars:
+    lpp_source_dir: /export/lpp_source/7300-03-01
+    filesets:
+      - bos.net.tcp.client
+  tasks:
+    - name: Install filesets from the lpp_source
+      ibm.power_aix.installp:
+        action: apply
+        device: "{{ lpp_source_dir }}"
+        install_list: "{{ filesets }}"
+        agree_licenses: true
+        extend_fs: true
+      tags: [packages]
+
+    - name: Read fileset facts
+      ibm.power_aix.lpp_facts:
+        filesets: "{{ filesets }}"
+      tags: [packages]
+
+    - name: Assert every fileset is installed
+      ansible.builtin.assert:
+        that: "item in ansible_facts.filesets"
+        fail_msg: "Fileset {{ item }} is not installed from {{ lpp_source_dir }}"
+      loop: "{{ filesets }}"
+      when: not ansible_check_mode
+      tags: [packages]
