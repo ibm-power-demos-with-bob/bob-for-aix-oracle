@@ -10,7 +10,7 @@ description: >-
   "Oracle AIX IO tuning", "hdisk qdepth Oracle", "JFS2 concurrent IO Oracle", "ASM AIX storage",
   "fiber channel Oracle AIX", "volume group striping Oracle", "MPIO Oracle", "lv striping",
   "oracle storage AIX", "jfs2 mount options Oracle", "asm disk group AIX", "rdisk Oracle AIX",
-  "npiv AIX Oracle", "fc adapter tuning AIX", "io_latency aiops", "rbna jfs2",
+  "npiv AIX Oracle", "fc adapter tuning AIX", "io_latency", "rbna jfs2",
   "filesystemio_options AIX", "aio Oracle AIX", "disk_asynch_io", "noatime oracle",
   "4k redo oracle aix", "buffer cache oracle aix", "db_cache_size oracle aix",
   "spectrum scale oracle", "gpfs oracle", "maxuproc oracle", "security limits oracle aix",
