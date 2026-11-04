@@ -17,6 +17,12 @@ Follow these steps exactly:
 3. Report the top-level entries now present under `.agents/skills/oracle-aix/operations/`
    (for example `performance/`, `security/`, `backup/`), and confirm the `.gitignore` entry.
 
+This command installs documentation content only and runs no Oracle binaries. When you later
+use the installed `operations/` topic files (`sqlplus`, `rman`, `srvctl`, SQLcl, ORDS, ...),
+first verify `ORACLE_HOME`, `ORACLE_SID`, `ORACLE_BASE`, `PATH`, `LIBPATH`, and `TNS_ADMIN`
+(if used) with the "Oracle environment pre-flight check" in `.agents/skills/oracle-aix/SKILL.md`.
+Mention this to the user in your final report.
+
 All paths are resolved from the repository root before changing directory. Every command
 uses absolute paths, so the copy can't land in the temporary clone.
 

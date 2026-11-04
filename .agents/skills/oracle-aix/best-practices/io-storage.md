@@ -473,6 +473,7 @@ The default `_use_single_log_writer=ADAPTIVE` switches between one LGWR and
 LGWR plus LGnn workers. Check what is running:
 
 ```bash
+: "${ORACLE_SID:?ORACLE_SID is not set}"   # see the pre-flight check in SKILL.md
 ps -ef | grep -E "ora_lg(wr|[0-9]{2})_${ORACLE_SID}" | grep -v grep
 ```
 

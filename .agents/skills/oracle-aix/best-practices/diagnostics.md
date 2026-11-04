@@ -31,7 +31,10 @@ nmon -f -s 30 -c 120 -m "$OUT"        # 1 hour recording in the background
 ```
 
 On the Oracle side, take an AWR or ASH report covering the problem window, plus
-`opatch lspatches` for each home.
+`opatch lspatches` for each home. Before any `sqlplus`, `adrci`, or `opatch` call,
+verify `ORACLE_HOME`, `ORACLE_SID`, `ORACLE_BASE`, `PATH`, `LIBPATH`, and `TNS_ADMIN`
+(if used) with the "Oracle environment pre-flight check" in `SKILL.md`. A wrong
+`ORACLE_SID` or `ORACLE_HOME` gives diagnostics for the wrong instance.
 
 ---
 

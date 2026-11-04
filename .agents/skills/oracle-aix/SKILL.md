@@ -57,10 +57,15 @@ oslevel -s                                  # AIX level, e.g. 7300-02-02-2420
 prtconf | grep -E "System Model|Processor Type|Processor Implementation Mode"
 lparstat -i | grep -E "^Type|^Mode|^Entitled Capacity|^Online Virtual CPUs|^Shared Pool ID"
 smtctl | head -5
+# Only after the Oracle environment pre-flight check below has passed:
 $ORACLE_HOME/OPatch/opatch lspatches        # Oracle RU / one-offs (as oracle)
 ```
 
 Also confirm whether the environment is **production**. If it isn't stated, ask.
+
+**Oracle environment**: confirm the target `ORACLE_HOME`, `ORACLE_SID`, and the OS user
+(`oracle` or `grid`) with the user, then verify them with the pre-flight check in
+"Oracle environment pre-flight check" below before any Oracle command.
 
 ---
 
@@ -93,6 +98,55 @@ export LIBPATH=$ORACLE_HOME/lib:/usr/lib
 
 For databases started by Clusterware or Oracle Restart, set environment variables
 with `srvctl setenv`. Shell profile variables are **ignored** by `srvctl start`.
+
+### Oracle environment pre-flight check (always apply)
+
+**Never assume the Oracle environment is set.** Before running or recommending
+`sqlplus`, `rman`, `srvctl`, `crsctl`, `lsnrctl`, `tnsping`, `adrci`, `opatch`,
+`datapatch`, `dbca`, `netca`, `impdp`/`expdp`, or any script that calls them,
+verify that the variables below are defined and consistent. If the user did not
+show the check output, include the check as the first step of your answer. If any
+item fails, stop and fix the environment first; do not run the Oracle command.
+
+| Variable | Required | What to verify |
+|---|---|---|
+| `ORACLE_HOME` | Always | Set, a directory, and contains `bin/sqlplus`. Matches the home of the target instance or listener (check `/etc/oratab`). For ASM, CRS, and `srvctl`/`crsctl` it is the **Grid home** |
+| `ORACLE_SID` | Always for local instance access | Set and equal to the running instance (`ora_pmon_<SID>`). On RAC use the node-local SID (for example `ORCL1`); for ASM use `+ASM1` |
+| `ORACLE_BASE` | Always | Set, and the Oracle home sits below it (unless the home is read-only or separately placed) |
+| `PATH` | Always | Contains `$ORACLE_HOME/bin` ahead of other Oracle homes; `whence -p sqlplus` resolves inside `$ORACLE_HOME` |
+| `LIBPATH` | Always | Contains `$ORACLE_HOME/lib`. `LD_LIBRARY_PATH` must **not** be used on AIX; warn if it is set |
+| `TNS_ADMIN` | Only if set or if `tnsnames.ora`/`sqlnet.ora` are used | If set, it is a directory holding the expected `tnsnames.ora`/`sqlnet.ora`. If unset, Oracle uses `$ORACLE_HOME/network/admin` |
+| `NLS_LANG` | When loading or exporting data | Matches the database character set, to avoid silent conversion |
+| `ORACLE_SGA_PGSZ`, `AIXTHREAD_SCOPE`, `AIX_TZCACHE` | Only before an instance **startup** | See `best-practices/os-prereqs.md` §7 and `best-practices/memory.md`. Remember `srvctl start` ignores the shell: check with `srvctl getenv database -db <db>` |
+
+```bash
+# Purpose: pre-flight check of the Oracle environment (ksh/bash). Run it as the
+# Oracle software owner (oracle, or grid for Grid Infrastructure) before any Oracle command.
+id -un                                         # expected: oracle (or grid)
+rc=0
+for v in ORACLE_HOME ORACLE_SID ORACLE_BASE PATH LIBPATH; do
+  eval "val=\${$v:-}"
+  if [ -n "$val" ]; then echo "OK       $v=$val"; else echo "MISSING  $v"; rc=1; fi
+done
+[ -d "${ORACLE_HOME:-/nonexistent}" ]            || { echo "FAIL     ORACLE_HOME is not a directory"; rc=1; }
+[ -x "${ORACLE_HOME:-/nonexistent}/bin/sqlplus" ] || { echo "FAIL     no executable \$ORACLE_HOME/bin/sqlplus"; rc=1; }
+echo ":$PATH:"    | grep -F ":${ORACLE_HOME:-/nonexistent}/bin:" >/dev/null || { echo "FAIL     \$ORACLE_HOME/bin not in PATH"; rc=1; }
+echo ":$LIBPATH:" | grep -F ":${ORACLE_HOME:-/nonexistent}/lib:" >/dev/null || { echo "FAIL     \$ORACLE_HOME/lib not in LIBPATH"; rc=1; }
+[ -z "${LD_LIBRARY_PATH:-}" ] || echo "WARN     LD_LIBRARY_PATH is set (AIX uses LIBPATH): $LD_LIBRARY_PATH"
+[ -z "${TNS_ADMIN:-}" ] || { [ -d "$TNS_ADMIN" ] && echo "OK       TNS_ADMIN=$TNS_ADMIN" || { echo "FAIL     TNS_ADMIN is not a directory: $TNS_ADMIN"; rc=1; }; }
+whence -p sqlplus                              # must resolve under $ORACLE_HOME/bin
+grep "^${ORACLE_SID:-?}:" /etc/oratab || echo "WARN     ORACLE_SID not in /etc/oratab"
+ps -ef | grep "[o]ra_pmon_${ORACLE_SID:-?}$"   # instance running? (empty = down or wrong SID)
+[ "$rc" -eq 0 ] && echo "Oracle environment OK" || echo "Oracle environment NOT OK: fix before continuing"
+```
+
+If variables are missing, set them from the standard template above, or load them
+with `. oraenv` (answer the SID prompt, or `ORAENV_ASK=NO` after setting
+`ORACLE_SID`), then re-run the check. Never guess an `ORACLE_HOME` path: confirm it
+with the user, `/etc/oratab`, or `cat /etc/oraInst.loc` and the central inventory.
+In scripts, fail fast with `: "${ORACLE_HOME:?ORACLE_HOME is not set}"` (and the same
+for `ORACLE_SID`) at the top, before any Oracle call. In SQL*Plus, confirm you are
+on the intended instance with `SELECT instance_name, host_name, status FROM v$instance;`.
 
 ### Shared memory and semaphores
 
@@ -198,7 +252,9 @@ The full flow is in `best-practices/diagnostics.md`.
 - Before scheduling backups, check free space in the FRA filesystem or disk group.
 
 ```bash
-# Hot backup. The deletes are destructive: confirm the retention policy first
+# Hot backup. First pass the Oracle environment pre-flight check above
+# (ORACLE_HOME, ORACLE_SID, PATH, LIBPATH): `rman target /` uses ORACLE_SID.
+# The deletes are destructive: confirm the retention policy first
 # (RMAN> SHOW RETENTION POLICY;) and that backups of the archived logs exist.
 rman target / <<EOF
   BACKUP DATABASE PLUS ARCHIVELOG;
@@ -209,9 +265,11 @@ EOF
 ### RAC on AIX
 
 - Shared storage is ASM on raw hdisks, or IBM Storage Scale (GPFS).
-- Run cluster commands from `$GRID_HOME/bin`:
+- Run cluster commands from `$GRID_HOME/bin`. Check that `GRID_HOME` (or the Grid
+  `ORACLE_HOME`) is set and that `ORACLE_SID` is the ASM SID (`+ASM<n>`) before using them:
 
 ```bash
+[ -x "${GRID_HOME:-/nonexistent}/bin/crsctl" ] || echo "GRID_HOME not set or invalid"
 crsctl stat res -t                 # cluster resource status
 srvctl status database -d <db>
 ocrcheck                           # OCR integrity (as root)
@@ -224,6 +282,8 @@ Interconnect and `no`/ISNO settings are in `best-practices/network-rac.md`.
 
 The full procedure is in `best-practices/os-prereqs.md`.
 
+0. Run the Oracle environment pre-flight check for the home you are patching
+   (`ORACLE_HOME`, `PATH`, `LIBPATH`): `opatch` patches the home in `ORACLE_HOME`.
 1. Take an RMAN backup and back up the Oracle home (tar).
 2. Update OPatch in each home, then run the conflict check:
    `opatch prereq CheckConflictAgainstOHWithDetail -ph ./`.
@@ -239,6 +299,9 @@ The full procedure is in `best-practices/os-prereqs.md`.
 ## Response Format
 
 ### SQL / PL/SQL
+
+Start every SQL*Plus / RMAN / `srvctl` answer with the Oracle environment
+pre-flight check (or a one-line reminder that it was done), then:
 
 ```sql
 -- Purpose: <what this does>

@@ -175,6 +175,7 @@ Every Oracle home on AIX includes its own IBM Java (`$ORACLE_HOME/jdk`). It is
 separate from the OS Java and has its own security fixes.
 
 ```bash
+: "${ORACLE_HOME:?ORACLE_HOME is not set}"   # see the pre-flight check in SKILL.md
 $ORACLE_HOME/jdk/bin/java -version 2>&1
 ```
 
@@ -199,6 +200,7 @@ Check the current status on My Oracle Support.
 | VG doesn't see grown LUNs | AIX after a SAN resize | `cfgmgr` then `chvg -g <vg>`, after checking APAR IJ46487 (`io-storage.md` §11) |
 
 ```bash
+: "${ORACLE_HOME:?ORACLE_HOME is not set}"   # see the pre-flight check in SKILL.md
 $ORACLE_HOME/OPatch/opatch lspatches
 ps -ef | grep "[o]ra_lms" | wc -l          # LMS process count per instance
 ```

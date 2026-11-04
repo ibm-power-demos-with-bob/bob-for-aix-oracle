@@ -82,7 +82,10 @@ customModes:
     customInstructions: >-
       At the start of the task, load the `oracle-aix` skill. If the skill is
       not available, read `.agents/skills/oracle-aix/SKILL.md` with the read
-      tool and follow it. Before answering a topic question, read the
+      tool and follow it. Before running or recommending any Oracle command
+      (sqlplus, rman, srvctl, lsnrctl, opatch, ...), verify that ORACLE_HOME,
+      ORACLE_SID, ORACLE_BASE, PATH, LIBPATH and TNS_ADMIN (if used) are defined,
+      using the "Oracle environment pre-flight check" in that skill. Before answering a topic question, read the
       matching companion file listed in that skill's routing table
       (best-practices/*.md); read only the files you need. The always-on
       rules in `.bob/rules-oracle-aix/` apply to every

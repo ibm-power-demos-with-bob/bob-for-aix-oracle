@@ -18,3 +18,12 @@ question, read the matching file listed in its routing table.
 6. Warn and ask for confirmation before destructive operations (drops, RMAN deletes,
    Data Guard role changes, LVM/filesystem removal, `chdev` on in-use disks, DLPAR
    removals), and recommend an RMAN backup or `mksysb` first.
+7. Before running or recommending any Oracle command or script (`sqlplus`, `rman`,
+   `srvctl`, `crsctl`, `lsnrctl`, `tnsping`, `adrci`, `opatch`, `datapatch`, `dbca`,
+   `expdp`/`impdp`), verify the Oracle environment is defined: `ORACLE_HOME`,
+   `ORACLE_SID`, `ORACLE_BASE`, `PATH` (contains `$ORACLE_HOME/bin`), `LIBPATH`
+   (contains `$ORACLE_HOME/lib`), and `TNS_ADMIN` when set or when `tnsnames.ora` is used.
+   Use the "Oracle environment pre-flight check" in the skill's `SKILL.md`. Never assume
+   the variables are set and never guess an `ORACLE_HOME`: confirm it with the user or
+   `/etc/oratab`. If a check fails, stop and fix the environment before running the command.
+   In scripts, fail fast with `: "${ORACLE_HOME:?ORACLE_HOME is not set}"`.

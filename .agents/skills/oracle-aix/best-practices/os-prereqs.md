@@ -113,8 +113,14 @@ See `network-rac.md` §2 (ephemeral port range) and §5 (`/etc/netsvc.conf`).
 
 ## 7. Environment Variables
 
+Verify that the variables are defined before any Oracle command: use the "Oracle
+environment pre-flight check" in `SKILL.md`.
+
 | Variable | Value | Notes |
 |---|---|---|
+| `ORACLE_BASE`, `ORACLE_HOME`, `ORACLE_SID` | Per installation (see `SKILL.md`) | Must be set and consistent with `/etc/oratab`. Never guess them |
+| `PATH` | Includes `$ORACLE_HOME/bin` | `whence -p sqlplus` must resolve inside `$ORACLE_HOME` |
+| `TNS_ADMIN` | Optional | If set, it must be a directory with the expected `tnsnames.ora`/`sqlnet.ora` |
 | `LIBPATH` | `$ORACLE_HOME/lib:/usr/lib` | AIX uses `LIBPATH`, not `LD_LIBRARY_PATH` |
 | `AIXTHREAD_SCOPE` | `S` | System-scope threads. Oracle recommends it on AIX |
 | `AIX_TZCACHE` | `ON` | IBM ATG recommendation: caches time zone information (AIX 7.1+) |
@@ -182,6 +188,10 @@ SPU (CPU), Bundle Patches, Patchsets and Base Releases"). The source recommended
 
 ## 10. Patching an Existing Oracle Home
 
+0. **Verify the environment** for the home being patched (`ORACLE_HOME`, `PATH`,
+   `LIBPATH`, `ORACLE_SID`) with the "Oracle environment pre-flight check" in
+   `SKILL.md`. `opatch` and `datapatch` act on `$ORACLE_HOME`: a wrong value patches
+   the wrong home.
 1. **Back up:**
    - RMAN backup.
    - `tar` of the Oracle home and the inventory.
@@ -190,6 +200,7 @@ SPU (CPU), Bundle Patches, Patchsets and Base Releases"). The source recommended
 3. **Check for conflicts:**
 
 ```bash
+: "${ORACLE_HOME:?ORACLE_HOME is not set}"
 $ORACLE_HOME/OPatch/opatch prereq CheckConflictAgainstOHWithDetail -ph ./
 $ORACLE_HOME/OPatch/opatch prereq CheckSystemSpace -ph ./
 ```

@@ -287,7 +287,9 @@ bosboot -a
 vmo -L lgpg_regions                  # BOOT/CUR = the calculated count
 svmon -G                             # "L 16 MB" row: PoolSize (allocated) vs inuse (used by the SGA)
 
-# Per-instance check (find the ora_smon PID first)
+# Per-instance check (find the ora_smon PID first). ORACLE_SID must be set and
+# correct: run the "Oracle environment pre-flight check" from SKILL.md first.
+: "${ORACLE_SID:?ORACLE_SID is not set}"
 SMON_PID=$(ps -e -o pid,args | awk -v s="ora_smon_${ORACLE_SID}" '$2==s{print $1}')
 svmon -P "$SMON_PID" | grep -i shmat
 # Segments with page size 'L' (16 MB) confirm the SGA uses large pages
@@ -309,6 +311,10 @@ srvctl getenv database -db mydb
 srvctl unsetenv database -db mydb -envs "ORACLE_SGA_PGSZ"
 # Also set in oracle user .profile as a fallback for sqlplus-started DBs
 ```
+
+Before a `sqlplus` startup, check the shell actually carries the value
+(`echo "$ORACLE_SGA_PGSZ"`) together with `ORACLE_HOME`, `ORACLE_SID`, `PATH`, and
+`LIBPATH` (see the "Oracle environment pre-flight check" in `SKILL.md`).
 
 > **⚠ ORACLE_SGA_PGSZ=64KB danger**: If 16MB pages are configured and you explicitly set `ORACLE_SGA_PGSZ=64KB`, Oracle will convert all 16MB pages to 64KB — permanently de-configuring them and potentially causing paging to paging space. Never use `64KB` when 16MB pages are intended.
 
