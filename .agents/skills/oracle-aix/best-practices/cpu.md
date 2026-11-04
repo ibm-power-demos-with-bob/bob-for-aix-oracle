@@ -225,9 +225,9 @@ CPUs, Shared Pool ID, and Maximum Capacity of Pool.
 ## 8. IBM Power Virtual Server (PowerVS)
 
 - PowerVS runs on the same Power hardware and VIOS stack as on-premises systems.
-- For licensing, Oracle LPARs in PowerVS are deployed with a **hard pin policy**
-  (no LPM). The PowerVS availability SLA, which relies on LPM, then no longer
-  applies, so provide HA with PowerHA, Data Guard, or RAC.
+- Oracle LPARs in PowerVS are deployed with a **hard pin policy** (no LPM). The
+  PowerVS availability SLA, which relies on LPM, then no longer applies, so
+  provide HA with PowerHA, Data Guard, or RAC.
 - PowerHA Resource Optimized High Availability (ROHA) can grow a standby LPAR on
   failover.
 
@@ -275,8 +275,6 @@ prtconf | grep -i "Processor Version"
    S4hrd near / S5hrd far).
 5. **Recheck Oracle:** `cpu_count`, `parallel_threads_per_cpu`, and
    `parallel_max_servers`. Check the AWR > 1031 logical CPU limit on large LPARs.
-6. **Licensing:** confirm the Oracle core factor for Power11 and SE2 eligibility in
-   writing with your Oracle licensing team.
 
 ---
 

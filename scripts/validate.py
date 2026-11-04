@@ -70,7 +70,7 @@ SHELL_LANGS = {"bash", "sh", "ksh", "shell"}
 
 FENCE_RE = re.compile(r"^```(\w*)\s*$")
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
-COMPANION_RE = re.compile(r"`((?:best-practices|licensing|examples|scripts)/[\w./-]+)`")
+COMPANION_RE = re.compile(r"`((?:best-practices|examples|scripts)/[\w./-]+)`")
 BARE_MD_RE = re.compile(r"`([a-z][\w-]*\.md)(?:\s+§[\w.]+)?`")
 POWER_AIX_RE = re.compile(r"\bibm\.power_aix\.([a-z_0-9]+)\b")
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.S)
