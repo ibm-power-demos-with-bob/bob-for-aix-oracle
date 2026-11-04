@@ -1,11 +1,9 @@
-1. enlever les references à Raph
-2. Vérifier que les variables d'environnement Oracle soient définies
-3. doit utiliser user oracle et grid par défaut, doit demander le nom d'utilisateur si pas présent.
-4. est-ce que IBM Bob utilise bash ou ksh  pour les commandes ? Normaliser l'execution avec bash.
-
-## install best practices
-
-8 volumes pour les datas 
-8 volumes pour redo log
-2 ou 4 volumes pour les backups
-bflash meilleures performances
+1. Check that the Oracle environment variables are defined.
+2. Use the `oracle` and `grid` users by default; ask for the user name if not present.
+3. Does IBM Bob use bash or ksh to run commands? Standardize execution on bash.
+4. Install best practices to take into account:
+   - 8 volumes for data
+   - 8 volumes for redo logs
+   - 2 or 4 volumes for backups
+   - flash (bflash) for better performance
+5. Generate evals and test yourself that these skills are useful on the AIX Power machine on IBM Cloud, visible via the ibmcloud CLI.
