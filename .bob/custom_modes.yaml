@@ -26,7 +26,7 @@ customModes:
         - fileRegex: '\.(sh|ksh|md|txt|conf|cfg|env)$'
           description: Shell scripts, configuration files and documentation
       - execute
-      - mcp-aix-oracle
+      - mcp
       - skill
       - todo
       - subagent
@@ -58,7 +58,7 @@ customModes:
         - fileRegex: '\.(ya?ml|j2|cfg|ini|md|txt)$'
           description: Ansible YAML, Jinja2 templates, ansible.cfg, inventories and docs
       - execute
-      - mcp-aix-oracle
+      - mcp
       - skill
       - todo
       - subagent
@@ -93,7 +93,7 @@ customModes:
         - fileRegex: '\.(sql|sh|ksh|rsp|ora|md|txt|ya?ml|conf|cfg|env)$'
           description: SQL, shell, response files, Oracle network files, YAML and docs
       - execute
-      - mcp-aix-oracle
+      - mcp
       - skill
       - todo
       - subagent
@@ -123,6 +123,6 @@ customModes:
       Mark anything you could not verify as "verify".
     groups:
       - read
-      - mcp-aix-oracle
+      - mcp
       - skill
       - todo
