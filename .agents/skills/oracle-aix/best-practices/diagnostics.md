@@ -4,6 +4,10 @@
 > memory pressure and paging, ORA errors and instance crashes, and RAC
 > interconnect problems on AIX.
 > Every step is **read-only**. Changes are in the topic files the flows point to.
+> **OS user:** run Oracle tools (`sqlplus`, `adrci`, `srvctl`) as `oracle` for the
+> database, and `crsctl`/`asmcmd` as `grid` for Grid/ASM/RAC. Use `root` only for AIX
+> commands such as `errpt`. If the user is missing or different, ask the user for the
+> correct username (see `os-prereqs.md` §4).
 > Collect evidence during the problem, take two samples to compare, and record
 > the timestamps.
 

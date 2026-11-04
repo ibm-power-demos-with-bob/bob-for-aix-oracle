@@ -6,6 +6,9 @@
 > IPv6 interface-order issue, TCP fast loopback, and RAC-related AIX APARs.
 > **Source:** IBM Power Systems VUG May 2024 (Ralf Schmidt-Dannert, IBM ATG), the
 > Oracle Grid Infrastructure installation guide for AIX, and MOS 811293.1.
+> **OS user:** Clusterware, ASM and RAC commands (`crsctl`, `oifcfg`, `srvctl` from the
+> Grid home) run as `grid`; database commands run as `oracle`. If the user is missing
+> or different, ask the user for the correct username (see `os-prereqs.md` §4).
 > **Before changing any `no` tunable**, check it with `no -L <tunable>`. Use `-p`
 > for persistent changes and `-r` for reboot-type tunables.
 

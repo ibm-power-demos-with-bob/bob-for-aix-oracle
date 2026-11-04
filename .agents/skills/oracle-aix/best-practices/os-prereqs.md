@@ -55,6 +55,27 @@ AIO loads on demand on AIX 6.1 and later. Tuning is in `io-storage.md` §3.
 
 ## 4. Users, Groups, Capabilities, Limits
 
+**Default OS users:** `oracle` owns the Database (RDBMS) software and runs database
+tasks. `grid` owns Grid Infrastructure and runs ASM, RAC and Clusterware tasks. Use
+`root` only for steps Oracle or AIX documents as root-only (`root.sh`,
+`orainstRoot.sh`, `opatchauto`, `ocrcheck`, `slibclean`, disk preparation).
+
+**Verify before use; never guess.** Check that the users exist and own the software:
+
+```bash
+id oracle; id grid                         # both must exist on a RAC / Grid node
+lsuser -a id pgrp groups home oracle grid
+grep -E '^(oracle|grid):' /etc/passwd      # also check LDAP/NIS if used
+ls -ld "$ORACLE_HOME"                      # owner of the home; check the Grid home too
+cat /etc/oraInst.loc                       # central inventory location and group
+```
+
+If `oracle` or `grid` does not exist, or the actual owner of the Oracle home, the
+inventory, or the running Oracle processes is a different user: **stop and ask the
+user for the correct username**. Do not default to `root` or another account, and do
+not create the user unless asked. Create the users below only for a new install and
+only with the user's agreement; adapt the names, IDs and groups to the site standard.
+
 ```bash
 # Groups and users (role separation; adapt the GIDs/UIDs to your standard and keep them identical on all RAC nodes)
 mkgroup -A id=54321 oinstall

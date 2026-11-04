@@ -64,7 +64,8 @@ $ORACLE_HOME/OPatch/opatch lspatches        # Oracle RU / one-offs (as oracle)
 Also confirm whether the environment is **production**. If it isn't stated, ask.
 
 **Oracle environment**: confirm the target `ORACLE_HOME`, `ORACLE_SID`, and the OS user
-(`oracle` or `grid`) with the user, then verify them with the pre-flight check in
+with the user (default `oracle` for the database, `grid` for Grid Infrastructure; see
+"Oracle OS user" below), then verify them with the pre-flight check in
 "Oracle environment pre-flight check" below before any Oracle command.
 
 ---
@@ -99,6 +100,41 @@ export LIBPATH=$ORACLE_HOME/lib:/usr/lib
 For databases started by Clusterware or Oracle Restart, set environment variables
 with `srvctl setenv`. Shell profile variables are **ignored** by `srvctl start`.
 
+### Oracle OS user (always apply)
+
+Use these OS users **by default** for Oracle tasks:
+
+| OS user | Use for | Typical commands |
+|---|---|---|
+| `oracle` | Database / RDBMS operations (the Database home owner) | `sqlplus`, `rman`, `lsnrctl` (DB listener), `adrci`, `dbca`, `netca`, `expdp`/`impdp`, `datapatch`, `opatch` on a DB home, `srvctl` from the DB home |
+| `grid` | Grid Infrastructure / ASM / RAC / Clusterware (the Grid home owner) | `asmcmd`, `sqlplus / as sysasm`, `srvctl` and `crsctl` from the Grid home, `cluvfy`, `gridSetup.sh`, `opatch` on the Grid home, SCAN/ASM listeners |
+
+`root` is only for the steps Oracle or AIX documents as root-only (`root.sh`,
+`orainstRoot.sh`, `opatchauto`, `ocrcheck`, `slibclean`, `errpt`, device preparation
+such as `chdev`/`chown` on hdisks). Never use `root` to run database or ASM tools.
+
+**Never guess the user.** Check that the expected user exists and owns the software:
+
+```bash
+# Purpose: confirm the Oracle software owners before any Oracle task
+id oracle; id grid                              # both must exist on a RAC / Grid node
+lsuser -a id pgrp groups home oracle grid       # AIX user attributes
+grep -E '^(oracle|grid):' /etc/passwd           # local definition (also check LDAP/NIS if used)
+ps -ef | grep -E "[o]ra_pmon_|[a]sm_pmon_"      # owner column = user running the instances
+ls -ld "$ORACLE_HOME"                           # owner of the home (check the Grid home too)
+cat /etc/oraInst.loc                            # central inventory and inventory group
+```
+
+If `oracle` or `grid` is missing, or the owner of the Oracle home, the central
+inventory, or the running Oracle processes is a different user, or the current login
+does not match the home you are working on (for example `oracle` for an ASM or
+Clusterware task): **stop and ask the user for the correct username**. Do not default
+to `root` or to any other account, and do not create the user unless the user
+explicitly asks for it. Single-owner installations (one account owns both the Grid
+and the Database homes) are valid, but ask the user to confirm the account instead of
+assuming it. Run commands as the confirmed user (`su - <user>` or a login as that
+user) with that user's environment.
+
 ### Oracle environment pre-flight check (always apply)
 
 **Never assume the Oracle environment is set.** Before running or recommending
@@ -122,8 +158,14 @@ item fails, stop and fix the environment first; do not run the Oracle command.
 ```bash
 # Purpose: pre-flight check of the Oracle environment (ksh/bash). Run it as the
 # Oracle software owner (oracle, or grid for Grid Infrastructure) before any Oracle command.
-id -un                                         # expected: oracle (or grid)
 rc=0
+me=$(id -un)
+case "$me" in
+  oracle|grid) echo "OK       user=$me" ;;
+  *) echo "FAIL     running as '$me', expected oracle or grid: ask the user for the correct username"; rc=1 ;;
+esac
+owner=$(ls -ld "${ORACLE_HOME:-/nonexistent}" 2>/dev/null | awk '{print $3}')
+[ -z "$owner" ] || [ "$owner" = "$me" ] || { echo "FAIL     ORACLE_HOME is owned by '$owner', not '$me': ask the user for the correct username"; rc=1; }
 for v in ORACLE_HOME ORACLE_SID ORACLE_BASE PATH LIBPATH; do
   eval "val=\${$v:-}"
   if [ -n "$val" ]; then echo "OK       $v=$val"; else echo "MISSING  $v"; rc=1; fi

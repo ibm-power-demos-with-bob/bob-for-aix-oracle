@@ -82,7 +82,13 @@ customModes:
     customInstructions: >-
       At the start of the task, load the `oracle-aix` skill. If the skill is
       not available, read `.agents/skills/oracle-aix/SKILL.md` with the read
-      tool and follow it. Before running or recommending any Oracle command
+      tool and follow it. Use the OS user `oracle` by default for database
+      (RDBMS) tasks and `grid` for Grid Infrastructure / ASM / RAC / Clusterware
+      tasks; use root only for documented root-only steps. If neither user
+      exists, or the operating user differs or is not found (check `id`,
+      `lsuser`, /etc/passwd, the owner of ORACLE_HOME), ask the user for the
+      correct username instead of guessing or defaulting to root or another
+      user. Before running or recommending any Oracle command
       (sqlplus, rman, srvctl, lsnrctl, opatch, ...), verify that ORACLE_HOME,
       ORACLE_SID, ORACLE_BASE, PATH, LIBPATH and TNS_ADMIN (if used) are defined,
       using the "Oracle environment pre-flight check" in that skill. Before answering a topic question, read the

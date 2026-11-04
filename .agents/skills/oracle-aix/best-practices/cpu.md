@@ -5,6 +5,9 @@
 > parameters derived from `cpu_count`, and Power11 migration.
 > **Source:** IBM Power Systems VUG May 2024 (Ralf Schmidt-Dannert, IBM ATG), plus
 > the IBM support notes listed at the end.
+> **OS user:** Oracle queries and commands run as `oracle` (database) or `grid`
+> (Grid/ASM/RAC). If the user is missing or different, ask the user for the correct
+> username (see `os-prereqs.md` §4).
 > **Before changing any `schedo` tunable**, check that it exists at the user's
 > AIX level and show its default and type with `schedo -L <tunable>`.
 

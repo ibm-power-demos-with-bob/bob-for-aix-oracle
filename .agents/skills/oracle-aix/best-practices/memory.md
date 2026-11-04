@@ -6,6 +6,9 @@
 > NUMA/SRAD, DSO/MPSS, AME, `LDR_CNTRL`, and the `shrsymtab`/`ldedit` defect.
 > **Source:** IBM Power Systems VUG May 2024 (Ralf Schmidt-Dannert, IBM ATG), for
 > Power9, Power10, and Power11.
+> **OS user:** Oracle settings (`ORACLE_SGA_PGSZ`, `LDR_CNTRL`) belong to the
+> software owner: `oracle` for the database, `grid` for Grid/ASM. If the user is
+> missing or different, ask the user for the correct username (see `os-prereqs.md` §4).
 > **Before changing any `vmo`, `ioo`, or `asoo` tunable**, check that it exists
 > and show its default and type with `vmo -L <tunable>`.
 

@@ -10,6 +10,9 @@
 > step-by-step slow-I/O diagnosis in `diagnostics.md` §2.
 > **Source:** IBM Power Systems VUG May 2024 (Ralf Schmidt-Dannert, IBM ATG), deck
 > `OracleOnPowerTuningConsiderations_AIX_IO_Misc_NEXT.pptx`.
+> **OS user:** ASM tasks (`asmcmd`, `sqlplus / as sysasm`) run as `grid`; database
+> tasks run as `oracle`. Disk preparation is done as `root`. If the user is missing
+> or different, ask the user for the correct username (see `os-prereqs.md` §4).
 > **Before changing any tunable**, check that it exists and show its default and
 > type with `ioo -L <tunable>`, `schedo -L <tunable>`, or `lsattr -Rl <dev> -a <attr>`.
 

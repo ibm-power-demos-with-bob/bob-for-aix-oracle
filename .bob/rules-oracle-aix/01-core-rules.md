@@ -27,3 +27,11 @@ question, read the matching file listed in its routing table.
    the variables are set and never guess an `ORACLE_HOME`: confirm it with the user or
    `/etc/oratab`. If a check fails, stop and fix the environment before running the command.
    In scripts, fail fast with `: "${ORACLE_HOME:?ORACLE_HOME is not set}"`.
+8. OS user: by default run database / RDBMS tasks as `oracle` and Grid Infrastructure /
+   ASM / RAC / Clusterware tasks as `grid`. Use `root` only for steps documented as
+   root-only (`root.sh`, `opatchauto`, `ocrcheck`, `slibclean`, `errpt`). Verify the
+   user with `id oracle; id grid`, `lsuser`, `/etc/passwd`, and the owner of
+   `ORACLE_HOME` and of the running `ora_pmon_*` / `asm_pmon_*` processes. If `oracle`
+   or `grid` does not exist, or the real owner is a different user, stop and ask the
+   user for the correct username. Never guess, and never fall back to `root` or
+   another account for Oracle tasks. See "Oracle OS user" in the skill's `SKILL.md`.

@@ -7,6 +7,9 @@
 > **Not here:** installation and patching are in `os-prereqs.md`, RAC networking
 > in `network-rac.md`, and ASM redundancy in `io-storage.md` §8.
 > **Source:** IBM Power Systems VUG May 2024 (Ralf Schmidt-Dannert, IBM ATG).
+> **OS user:** Oracle commands run as `oracle` (database) or `grid` (Grid/ASM/RAC). If
+> the user is missing or different, ask the user for the correct username (see
+> `os-prereqs.md` §4).
 > **Underscore (hidden) parameters and events in this file must only be set with
 > Oracle Support's agreement.**
 
