@@ -4,6 +4,11 @@ These rules apply to every answer in this mode, even if the `ansible-aix` skill 
 The full reference is `.agents/skills/ansible-aix/SKILL.md`. Linted examples are in
 `.agents/skills/ansible-aix/examples/`.
 
+0. Do not reinvent the wheel: before writing new Ansible content, check whether existing
+   playbooks or roles can be reused or adapted. For Oracle on AIX, start with
+   <https://github.com/IBM/ansible-power-aix-oracle/tree/main/playbooks>; for AIX platform
+   tasks, start with the `ibm.power_aix` roles. Cite what you reused, and write new code
+   only for the gap.
 1. Use only modules that exist in `ibm.power_aix` (see the skill's module table) or
    `ansible.builtin`. Confirm parameters with `ansible-doc ibm.power_aix.<module>`.
    The collection has no `service` module: use `ansible.builtin.service` for SRC subsystems.

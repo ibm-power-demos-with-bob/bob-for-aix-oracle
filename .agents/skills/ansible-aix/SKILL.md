@@ -22,6 +22,38 @@ parameters. If a capability is not in the tables below, check the
 
 ---
 
+## Reuse Existing Playbooks Before Writing New Ones
+
+Do not reinvent the wheel. Before writing a new playbook or role, check whether an
+existing one already covers the need and reuse or adapt it.
+
+1. **Oracle on AIX**: first review the IBM playbooks in
+   <https://github.com/IBM/ansible-power-aix-oracle/tree/main/playbooks>. The
+   directory contains, among others:
+   - `demo_play_aix_oracle.yml`, `goldimage_play_aix_oracle.yml`,
+     `podba_create_oracle_db.yml`, `powervc_oracle_play.yml`, and
+     `deinstall_play_aix_oracle.yml`
+   - `vars/`, `roles/`, `inventory`, and `ansible.cfg` as a reference layout
+   
+   Per the repository README, it automates an Oracle 19c single-instance
+   installation on a new AIX LPAR (AIX 7.2 TL4 SP1 or later) and creates a test
+   database on a filesystem or on Oracle ASM. It uses `ibm.power_aix` modules.
+2. **AIX platform tasks** (software, LVM, users, NIM, VIOS): prefer the roles of the
+   `ibm.power_aix` collection (see "Collection Roles" below) over custom tasks.
+3. **Reuse, then adapt**: import or copy the existing playbook or role, then
+   override its variables instead of rewriting the logic. Keep upstream task names
+   and variable names where possible so future updates are easy to merge.
+4. **Review before running**: the upstream content is not guaranteed to meet this
+   skill's rules. Check it for FQCN, idempotency, `--check` support, Vault secrets,
+   and `ansible-lint --profile production`, and fix gaps in a thin wrapper or an
+   overlay rather than by forking the whole playbook.
+5. **Write new content only for the gap**: if nothing suitable exists, say what you
+   searched and why it does not fit, then write the minimal new code.
+6. **Always cite the source**: state which upstream playbook or role you reused and
+   link it, and note that it must be tested on a non-production LPAR first.
+
+---
+
 ## Non-Negotiable Rules
 
 1. **FQCN**: always `ibm.power_aix.<module>` or `ansible.builtin.<module>`. Do not
@@ -216,6 +248,8 @@ Complete, lint-clean examples are in [`examples/`](examples/):
 
 ## Checklist Before Delivering a Playbook
 
+0. Did you check the existing playbooks and roles (IBM `ansible-power-aix-oracle`,
+   `ibm.power_aix` roles) before writing new code?
 1. Is every module name and parameter confirmed with `ansible-doc`?
 2. Are all variables externalised (no hardcoded paths, sizes, or hosts)?
 3. Does it run cleanly with `--check`, and with no changes on a second run?
@@ -231,4 +265,5 @@ Complete, lint-clean examples are in [`examples/`](examples/):
 - [ibm.power_aix modules](https://ibm.github.io/ansible-power-aix/modules.html)
 - [ibm.power_aix roles](https://ibm.github.io/ansible-power-aix/roles.html)
 - [Oracle on AIX automation (IBM)](https://github.com/IBM/ansible-power-aix-oracle-dba)
+- [Oracle 19c install playbooks for AIX (IBM)](https://github.com/IBM/ansible-power-aix-oracle/tree/main/playbooks)
 - [IBM AIX 7.3 documentation](https://www.ibm.com/docs/en/aix/7.3)
