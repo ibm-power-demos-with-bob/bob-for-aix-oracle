@@ -26,7 +26,9 @@ question, read the matching file listed in its routing table.
    Use the "Oracle environment pre-flight check" in the skill's `SKILL.md`. Never assume
    the variables are set and never guess an `ORACLE_HOME`: confirm it with the user or
    `/etc/oratab`. If a check fails, stop and fix the environment before running the command.
-   In scripts, fail fast with `: "${ORACLE_HOME:?ORACLE_HOME is not set}"`.
+   In scripts, fail fast with `: "${ORACLE_HOME:?ORACLE_HOME is not set}"`. All commands
+   and one-liners executed by IBM Bob run under bash; ensure POSIX / bash compatibility
+   while supporting ksh93 for native AIX standalone scripts.
 8. OS user: by default run database / RDBMS tasks as `oracle` and Grid Infrastructure /
    ASM / RAC / Clusterware tasks as `grid`. Use `root` only for steps documented as
    root-only (`root.sh`, `opatchauto`, `ocrcheck`, `slibclean`, `errpt`). Verify the

@@ -149,14 +149,14 @@ item fails, stop and fix the environment first; do not run the Oracle command.
 | `ORACLE_HOME` | Always | Set, a directory, and contains `bin/sqlplus`. Matches the home of the target instance or listener (check `/etc/oratab`). For ASM, CRS, and `srvctl`/`crsctl` it is the **Grid home** |
 | `ORACLE_SID` | Always for local instance access | Set and equal to the running instance (`ora_pmon_<SID>`). On RAC use the node-local SID (for example `ORCL1`); for ASM use `+ASM1` |
 | `ORACLE_BASE` | Always | Set, and the Oracle home sits below it (unless the home is read-only or separately placed) |
-| `PATH` | Always | Contains `$ORACLE_HOME/bin` ahead of other Oracle homes; `whence -p sqlplus` resolves inside `$ORACLE_HOME` |
+| `PATH` | Always | Contains `$ORACLE_HOME/bin` ahead of other Oracle homes; `command -v sqlplus` resolves inside `$ORACLE_HOME` |
 | `LIBPATH` | Always | Contains `$ORACLE_HOME/lib`. `LD_LIBRARY_PATH` must **not** be used on AIX; warn if it is set |
 | `TNS_ADMIN` | Only if set or if `tnsnames.ora`/`sqlnet.ora` are used | If set, it is a directory holding the expected `tnsnames.ora`/`sqlnet.ora`. If unset, Oracle uses `$ORACLE_HOME/network/admin` |
 | `NLS_LANG` | When loading or exporting data | Matches the database character set, to avoid silent conversion |
 | `ORACLE_SGA_PGSZ`, `AIXTHREAD_SCOPE`, `AIX_TZCACHE` | Only before an instance **startup** | See `best-practices/os-prereqs.md` §7 and `best-practices/memory.md`. Remember `srvctl start` ignores the shell: check with `srvctl getenv database -db <db>` |
 
 ```bash
-# Purpose: pre-flight check of the Oracle environment (ksh/bash). Run it as the
+# Purpose: pre-flight check of the Oracle environment (bash/ksh compatible). Run it as the
 # Oracle software owner (oracle, or grid for Grid Infrastructure) before any Oracle command.
 rc=0
 me=$(id -un)
@@ -176,7 +176,7 @@ echo ":$PATH:"    | grep -F ":${ORACLE_HOME:-/nonexistent}/bin:" >/dev/null || {
 echo ":$LIBPATH:" | grep -F ":${ORACLE_HOME:-/nonexistent}/lib:" >/dev/null || { echo "FAIL     \$ORACLE_HOME/lib not in LIBPATH"; rc=1; }
 [ -z "${LD_LIBRARY_PATH:-}" ] || echo "WARN     LD_LIBRARY_PATH is set (AIX uses LIBPATH): $LD_LIBRARY_PATH"
 [ -z "${TNS_ADMIN:-}" ] || { [ -d "$TNS_ADMIN" ] && echo "OK       TNS_ADMIN=$TNS_ADMIN" || { echo "FAIL     TNS_ADMIN is not a directory: $TNS_ADMIN"; rc=1; }; }
-whence -p sqlplus                              # must resolve under $ORACLE_HOME/bin
+command -v sqlplus                             # must resolve under $ORACLE_HOME/bin (works in both bash and ksh)
 grep "^${ORACLE_SID:-?}:" /etc/oratab || echo "WARN     ORACLE_SID not in /etc/oratab"
 ps -ef | grep "[o]ra_pmon_${ORACLE_SID:-?}$"   # instance running? (empty = down or wrong SID)
 [ "$rc" -eq 0 ] && echo "Oracle environment OK" || echo "Oracle environment NOT OK: fix before continuing"

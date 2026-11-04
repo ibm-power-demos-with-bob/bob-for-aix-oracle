@@ -12,7 +12,7 @@ customModes:
       VIOS basics on IBM Power Systems.
     whenToUse: >-
       Use when administering, troubleshooting, tuning, or automating IBM AIX
-      systems with shell commands, ksh scripts, or runbooks. For Ansible
+      systems with shell commands, bash/ksh scripts, or runbooks. For Ansible
       playbooks use the Ansible AIX mode; for Oracle Database on AIX use the
       Oracle on AIX/Power mode.
     customInstructions: >-

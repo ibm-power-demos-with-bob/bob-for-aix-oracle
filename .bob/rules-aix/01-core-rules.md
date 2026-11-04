@@ -14,4 +14,7 @@ The full reference is `.agents/skills/aix/SKILL.md`.
 6. Warn and ask for confirmation before destructive or disruptive operations (`rmdev -d`,
    `rmlv`, `rmfs`, `reducevg`, `exportvg`, `errclear`, `installp -c`, reboots), and
    recommend `mksysb`, `savevg`, or `alt_disk_copy` first.
-7. Scripts are POSIX sh/ksh, idempotent, check `$?`, and log to timestamped files.
+7. Command execution & scripts: IBM Bob executes commands via bash (`execute_command`/bash tool).
+   All shell examples and one-liners must use bash-compatible / POSIX syntax. AIX standalone
+   scripts support both bash and ksh93 (`#!/usr/bin/env bash` or `#!/usr/bin/ksh`), are idempotent,
+   check `$?` or use `set -e`, and log to timestamped files.

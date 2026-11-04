@@ -140,7 +140,7 @@ environment pre-flight check" in `SKILL.md`.
 | Variable | Value | Notes |
 |---|---|---|
 | `ORACLE_BASE`, `ORACLE_HOME`, `ORACLE_SID` | Per installation (see `SKILL.md`) | Must be set and consistent with `/etc/oratab`. Never guess them |
-| `PATH` | Includes `$ORACLE_HOME/bin` | `whence -p sqlplus` must resolve inside `$ORACLE_HOME` |
+| `PATH` | Includes `$ORACLE_HOME/bin` | `command -v sqlplus` must resolve inside `$ORACLE_HOME` |
 | `TNS_ADMIN` | Optional | If set, it must be a directory with the expected `tnsnames.ora`/`sqlnet.ora` |
 | `LIBPATH` | `$ORACLE_HOME/lib:/usr/lib` | AIX uses `LIBPATH`, not `LD_LIBRARY_PATH` |
 | `AIXTHREAD_SCOPE` | `S` | System-scope threads. Oracle recommends it on AIX |

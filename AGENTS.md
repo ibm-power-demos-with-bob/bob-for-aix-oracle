@@ -16,7 +16,11 @@ This repository provides skills, rules, and configuration for AI agents (includi
    - Do **not** use Linux-specific commands or flags (e.g. `systemctl`, `journalctl`, `date -d`, `free`, `useradd`, `sed -i`, `grep -P`, `export LD_LIBRARY_PATH`). Use AIX equivalents (e.g. `LIBPATH`).
    - For Ansible automation, only use verified modules and roles from the `ibm.power_aix` collection.
 
-3. **Code Quality and Validation:**
+3. **Shell Command Execution vs. Native AIX Scripts:**
+   - **Command Execution by IBM Bob / Agents:** IBM Bob and automated execution tools execute shell commands using `bash` (`execute_command` / bash tool, or bash on AIX from AIX Toolbox `/opt/freeware/bin/bash` or `/usr/bin/bash`). All shell code snippets, one-liners, and automated commands in skills and documentation must use bash-compatible / POSIX-compliant syntax so they execute cleanly without relying on ksh-only quirks.
+   - **Generated Scripts on AIX:** Standalone scripts generated for native AIX execution can run under both `bash` and `ksh93`/`ksh` (default login shell on AIX). Standardize script shebangs on `#!/usr/bin/env bash` or `#!/usr/bin/bash` when bash is available, with portable POSIX `/usr/bin/ksh` fallback.
+
+4. **Code Quality and Validation:**
    - Before submitting changes, run `python scripts/validate.py` to ensure all links, modes, and YAML schemas are valid.
    - When updating skill frontmatter descriptions, synchronize Bob pointer files via `python scripts/sync_bob_skills.py`.
    - Ensure Ansible examples adhere to production standards (`ansible-lint`).

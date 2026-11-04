@@ -298,8 +298,13 @@ lsrole ALL; lsauth ALL | head # RBAC
 
 ## Automation Guidelines
 
-- Write POSIX `sh` or `ksh` scripts (ksh is the AIX default shell). Do not use
-  bash-only syntax unless bash is installed from the Toolbox.
+- **Command execution by IBM Bob / Agents:** IBM Bob executes shell commands using `bash`
+  (`execute_command` / bash tool, or bash on AIX via AIX Toolbox `/opt/freeware/bin/bash` or
+  `/usr/bin/bash`). All commands, one-liners, and execution examples must use bash-compatible /
+  POSIX syntax so they execute cleanly without relying on ksh-only quirks or non-portable constructs.
+- **Native AIX Scripts:** Native standalone scripts generated for AIX should be portable across
+  both `bash` and `ksh93`/`ksh` (the AIX default login shell). Use `#!/usr/bin/env bash` or
+  `#!/usr/bin/bash` with fallback to `#!/usr/bin/ksh`.
 - Prefer parseable output: `lsdev -F`, `lsattr -El <dev> -O`, `lsfs -c`,
   `lslpp -Lc`, `lsuser -c`, `lssrc -a`.
 - Check `$?` after each critical command (or use `set -e`), and log to
