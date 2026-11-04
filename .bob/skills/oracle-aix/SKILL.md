@@ -4,12 +4,11 @@ description: >-
   Use for Oracle Database running on IBM AIX / IBM Power Systems (including
   PowerVS): administration, installation and patching on AIX, performance tuning
   of the AIX/Power layer (CPU/SMT/LPAR, memory/large pages/NUMA, I/O/ASM/JFS2/FC,
-  RAC network), diagnosis that correlates Oracle with AIX (alert log + errpt),
-  and Oracle licensing on Power (capped LPARs, shared pools, LPM, SE2). Do NOT
-  use for Oracle on Linux, Windows, or Exadata. Trigger phrases: "Oracle on AIX",
-  "Oracle AIX", "Oracle Power Systems", "Oracle IBM Power", "Oracle PowerVS",
-  "RAC on AIX", "ASM on AIX", "Oracle LPAR", "ORACLE_SGA_PGSZ", "Oracle license
-  Power", "opatch AIX", "LIBPATH Oracle".
+  RAC network), and diagnosis that correlates Oracle with AIX (alert log + errpt).
+  Do NOT use for Oracle on Linux, Windows, or Exadata. Trigger phrases: "Oracle on
+  AIX", "Oracle AIX", "Oracle Power Systems", "Oracle IBM Power", "Oracle PowerVS",
+  "RAC on AIX", "ASM on AIX", "Oracle LPAR", "ORACLE_SGA_PGSZ", "opatch AIX",
+  "LIBPATH Oracle".
 ---
 
 # oracle-aix (Bob pointer skill)

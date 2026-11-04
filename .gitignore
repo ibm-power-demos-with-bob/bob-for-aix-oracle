@@ -1,5 +1,5 @@
 .vscode
 mcp.json
 .agents/skills/oracle-aix/operations/
-.agents/skills/oracle-aix/licensing/scripts/options_packs_usage_statistics.sql
+WIP/licensing/scripts/options_packs_usage_statistics.sql
 __pycache__/

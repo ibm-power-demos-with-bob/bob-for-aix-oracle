@@ -4,12 +4,11 @@ description: >-
   Use for Oracle Database running on IBM AIX / IBM Power Systems (including
   PowerVS): administration, installation and patching on AIX, performance tuning
   of the AIX/Power layer (CPU/SMT/LPAR, memory/large pages/NUMA, I/O/ASM/JFS2/FC,
-  RAC network), diagnosis that correlates Oracle with AIX (alert log + errpt),
-  and Oracle licensing on Power (capped LPARs, shared pools, LPM, SE2). Do NOT
-  use for Oracle on Linux, Windows, or Exadata. Trigger phrases: "Oracle on AIX",
-  "Oracle AIX", "Oracle Power Systems", "Oracle IBM Power", "Oracle PowerVS",
-  "RAC on AIX", "ASM on AIX", "Oracle LPAR", "ORACLE_SGA_PGSZ", "Oracle license
-  Power", "opatch AIX", "LIBPATH Oracle".
+  RAC network), and diagnosis that correlates Oracle with AIX (alert log + errpt).
+  Do NOT use for Oracle on Linux, Windows, or Exadata. Trigger phrases: "Oracle on
+  AIX", "Oracle AIX", "Oracle Power Systems", "Oracle IBM Power", "Oracle PowerVS",
+  "RAC on AIX", "ASM on AIX", "Oracle LPAR", "ORACLE_SGA_PGSZ", "opatch AIX",
+  "LIBPATH Oracle".
 ---
 
 # Oracle Database on IBM Power Systems / AIX
@@ -36,7 +35,6 @@ read only the files you need.
 | RAC/public network, `no` tunables, interface naming, HAIP, jumbo frames | [`best-practices/network-rac.md`](best-practices/network-rac.md) |
 | Install/patch 19c on AIX, filesets, users/capabilities/limits, IOCP, OS prerequisites | [`best-practices/os-prereqs.md`](best-practices/os-prereqs.md) |
 | Mutex spin, MARKHOT, CPU % under SMT, PowerVS tiers, pigz/zlibNX, embedded JDK, known 19c issues | [`best-practices/misc.md`](best-practices/misc.md) |
-| Licensing: hard partitioning, SPP, LPM, PowerVS, SE2, options/packs usage | [`licensing/licensing.md`](licensing/licensing.md) |
 
 **Pure Oracle topics** (SQL, PL/SQL, RMAN, Data Guard, AWR/ASH, security, ORDS,
 SQLcl) are platform-neutral:

@@ -18,5 +18,3 @@ question, read the matching file listed in its routing table.
 6. Warn and ask for confirmation before destructive operations (drops, RMAN deletes,
    Data Guard role changes, LVM/filesystem removal, `chdev` on in-use disks, DLPAR
    removals), and recommend an RMAN backup or `mksysb` first.
-7. Licensing answers are technical input only. The Oracle contract governs, so direct
-   compliance decisions to the licensing team.

@@ -26,9 +26,6 @@ Built for **IBM Bob**. The skills also work with other agents that read
       network-rac.md                # no/ISNO, RAC interconnect, interface naming, HAIP
       os-prereqs.md                 # filesets, IOCP, users/limits, 19c install + patching
       misc.md                       # mutex spin, MARKHOT, SMT CPU %, PowerVS tiers, pigz
-    licensing/
-      licensing.md                  # hard partitioning, SPP, LPM, PowerVS, SE2, packs
-      scripts/README.md             # how to get MOS 1317265.1 options/packs script
     operations/                     # (git-ignored) Oracle community db skill, via /oracle-aix-setup
 .bob/
   custom_modes.yaml                 # Bob modes: aix, ansible-aix, oracle-aix, aix-review
@@ -65,7 +62,7 @@ scripts/
 |---|---|---|
 | `aix` | AIX administration, troubleshooting, tuning, shell automation | AIX vs Linux command map, SRC, tunables (`-L`/`-p`/`-r`), performance triage, installp/emgr/TL-SP, mksysb/alt_disk, NIM, VIOS basics |
 | `ansible-aix` | Playbooks and roles with `ibm.power_aix` | Real module and role catalogue, check-mode and idempotency rules, Python bootstrap, linted examples |
-| `oracle-aix` | Oracle Database on AIX / Power, including PowerVS (not Linux) | Safety rules, diagnosis flows, CPU/memory/I-O/network best practices, install/patch, licensing |
+| `oracle-aix` | Oracle Database on AIX / Power, including PowerVS (not Linux) | Safety rules, diagnosis flows, CPU/memory/I-O/network best practices, install/patch |
 
 The `oracle-aix` skill hands platform-neutral Oracle topics (SQL, PL/SQL, RMAN, Data Guard,
 AWR) to the [Oracle `db` skill](https://github.com/oracle/skills/tree/main/db) when it is

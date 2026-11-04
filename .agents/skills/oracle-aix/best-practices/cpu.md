@@ -164,8 +164,6 @@ Oracle picks up DLPAR CPU changes automatically (`cpu_count`,
 | **Shared (SPP)** | Most Oracle workloads | Flexible and efficient, more latency variability |
 | **Dedicated donating** | Dedicated with idle cycles given back to the pool | In between |
 
-For licensing implications, see `licensing/licensing.md`.
-
 ---
 
 ## 6. Oracle CPU-Related Parameters on AIX
@@ -220,8 +218,7 @@ SHOW PARAMETER db_writer_processes
    `cpu_count`.
 
 Key `lparstat -i` fields: Type, Mode, Entitled Capacity, Online/Maximum Virtual
-CPUs, Shared Pool ID, and Maximum Capacity of Pool. See `licensing.md` §1 for what
-each field means.
+CPUs, Shared Pool ID, and Maximum Capacity of Pool.
 
 ---
 
@@ -279,7 +276,7 @@ prtconf | grep -i "Processor Version"
 5. **Recheck Oracle:** `cpu_count`, `parallel_threads_per_cpu`, and
    `parallel_max_servers`. Check the AWR > 1031 logical CPU limit on large LPARs.
 6. **Licensing:** confirm the Oracle core factor for Power11 and SE2 eligibility in
-   writing (see `licensing/licensing.md`).
+   writing with your Oracle licensing team.
 
 ---
 
