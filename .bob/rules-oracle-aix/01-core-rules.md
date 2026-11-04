@@ -37,3 +37,12 @@ question, read the matching file listed in its routing table.
    or `grid` does not exist, or the real owner is a different user, stop and ask the
    user for the correct username. Never guess, and never fall back to `root` or
    another account for Oracle tasks. See "Oracle OS user" in the skill's `SKILL.md`.
+9. Storage layout for new or reviewed databases (details in
+   `best-practices/io-storage.md` §7): at least 8 equal-size LUNs for `DATA`, at least
+   8 LUNs (or dedicated low write-latency LUNs) for `REDO`/`RECO`, and 2 to 4 LUNs for
+   `FRA`/backups, spread across controllers and adapters. Put redo and OLTP data on
+   flash tiers (bflash: PowerVS Tier 0 / Tier 1, or FlashSystem NVMe) and backups on
+   Tier 3, with no mixed tiers in one disk group. On flash, `queue_depth` is 64 (up to
+   256 for the busiest LUNs) only after `iostat -D` shows `sqfull` > 0 with low
+   `avgserv` and `num_cmd_elems` covers the sum; show the revert. Set ASM `AU_SIZE`
+   to `4M` or `8M` at `CREATE DISKGROUP` time, because it can't be changed later.

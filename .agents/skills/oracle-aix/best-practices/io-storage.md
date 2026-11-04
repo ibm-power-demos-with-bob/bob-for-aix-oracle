@@ -113,7 +113,7 @@ iostat -D hdisk4 5 3                # avgserv, avgsqsz, sqfull
 
 | Attribute | Recommendation | Notes |
 |---|---|---|
-| `queue_depth` | 32–64 to start (flash arrays often higher) | The maximum depends on the driver (often 256). In high-IOPS environments, add LUNs rather than raising it further |
+| `queue_depth` | 32–64 to start (flash: 64, up to 256 for the busiest LUNs, see §7b) | The maximum depends on the driver (often 256). In high-IOPS environments, add LUNs rather than raising it further |
 | `max_transfer` | `0x100000` (1 MB) or larger if the array supports it | Must be ≤ the adapter's `max_xfer_size` |
 | `reserve_policy` | `no_reserve` | Required for the `round_robin` / `shortest_queue` path algorithms and for disks shared between nodes (ASM/RAC, PowerHA) |
 | `algorithm` | `shortest_queue` (default with AIX PCM on recent levels) | `round_robin` for uniform small I/O |
@@ -252,15 +252,149 @@ LUNs**. If you need more LUNs, add adapters.
 Spread each I/O type evenly over as many LUNs as possible. Don't hand-place files
 on specific devices: that degrades as data grows.
 
-| Pool | LUNs | Notes |
-|---|---|---|
-| Data / index / temp | 8, or a multiple of 8 | Starting point |
-| Redo logs | 4–8 | A separate pool from data |
-| OCR / voting (RAC) | 3 | Standard RAC requirement (normal redundancy) |
-| Oracle binaries | 2 | Separate from data |
+### 7a. Volume layout (minimum LUN counts)
 
+Every LUN has its own hdisk queue (`queue_depth`) and its own paths. More LUNs mean
+more queued I/Os in flight and more parallel I/O paths through the FC adapters.
+These are **minimums for production OLTP/mixed workloads**; very small or
+non-production databases can use fewer.
+
+| Pool (ASM disk group, or JFS2 VG) | Minimum LUNs | Notes |
+|---|---|---|
+| Data / index / temp (`DATA`) | **8**, or a multiple of 8 | Equal size. Spread over controllers and adapters (rules below) |
+| Redo logs (`REDO`; `RECO` if used for online redo or flashback) | **8**, or dedicated LUNs with low write latency | A separate pool from data. Latency matters more than capacity: the LUNs can be small, and should be on the lowest-latency tier (§7b) |
+| Backups / FRA (`FRA` or `BACKUP`, or JFS2 backup filesystems) | **2 to 4** | Sequential, throughput-oriented. Can use a lower tier (§7b) |
+| OCR / voting (RAC) | 3 | Standard RAC requirement (normal redundancy), in a small separate disk group |
+| Oracle binaries | 2 | Separate from data (JFS2) |
+
+Rules for every pool:
+
+- **Equal size within a disk group.** ASM balances by free space, so mixed sizes
+  leave the larger LUNs under-used or hot. Never mix storage tiers in one disk group.
+- **Spread across controllers.** Distribute LUN ownership (preferred node/canister)
+  evenly over the array controllers, and map the LUNs to at least two NPIV or
+  VSCSI adapters per LPAR, through dual VIOS (§5, §6). Don't put all LUNs of a
+  pool behind one adapter port.
+- **Size `num_cmd_elems` for the sum.** `num_cmd_elems` per FC port should cover the
+  `queue_depth` of all hdisks using that port (§5). More LUNs times a larger
+  `queue_depth` raises this requirement.
+- **Grow by adding LUNs in the same multiple** (for example 8 to 16) and let ASM
+  rebalance, rather than growing a single LUN.
 - For large parallel sort and hash I/O, consider a separate temp pool.
-- Flashback logs and archive logs (both sequential writes) can share a pool.
+- Flashback logs and archive logs (both sequential writes) can share a pool, or
+  use the `FRA` pool.
+
+```bash
+# Purpose: check that the LUNs of a pool are equal in size and evenly spread over paths/adapters
+lsmpio -q                                   # size and volume name per hdisk
+lspath -l hdiskASMD01 -F "name path_id parent connection status"   # parent = fscsiX: repeat per LUN and compare
+lspath -F "name parent" | awk '{n[$2]++} END{for(p in n) print p, n[p]}'   # paths per fscsiX: should be balanced
+```
+
+### 7b. Storage tiering and flash (`bflash`)
+
+In this repository "bflash" means **block flash**: the flash-based block storage
+tier, such as an IBM FlashSystem (NVMe) array on-premises or in PowerVS. It is
+not an IBM product name or an AIX/Oracle setting, so check the exact tier names of
+your offering in the provider documentation.
+
+**PowerVS tiers** (IBM Cloud documentation, Flexible IOPS; check for changes):
+
+| Tier | IOPS | Notes |
+|---|---|---|
+| Tier 0 | 25 IOPS/GB | Highest IOPS per GB. A 100 GB volume gets 2,500 IOPS |
+| Tier 1 | 10 IOPS/GB | A 100 GB volume gets 1,000 IOPS |
+| Tier 3 | 3 IOPS/GB | The default tier if none is specified |
+| Fixed IOPS | 5,000 IOPS per volume | Only for volumes of 200 GB or less |
+
+PowerVS data centers use IBM FlashSystem storage, and Tier 0 and Tier 1 are the
+tiers to use as "flash" for Oracle. The tier mapping with typical Oracle use is
+also in `misc.md` §8.
+
+**When to choose which tier**
+
+| Workload / file type | Choose | Why |
+|---|---|---|
+| Online redo logs (`REDO`), latency-critical OLTP | Highest flash tier (Tier 0, or on-premises NVMe flash) | `log file sync` and `log file parallel write` depend on write latency. Target well under 1 ms |
+| OLTP data, indexes, undo, hot temp | Flash (Tier 1, or Tier 0 if the IOPS target needs it) | Random 8 KB reads: target < 1 ms (`db file sequential read`) |
+| Batch / DW data with mostly sequential scans | Tier 1 is usually enough. Size for throughput (MB/s), not only IOPS | Large sequential I/O is bandwidth-limited by the FC adapters first |
+| Archive logs, RMAN backups, FRA, Oracle binaries | Tier 3 | Sequential and not latency-critical. Cheapest per GB |
+| Small volumes that need a guaranteed IOPS floor | Fixed IOPS (5,000 per volume, up to 200 GB) | Per-GB tiers give small volumes few IOPS |
+
+**Sizing considerations**
+
+- On PowerVS, volume IOPS = tier IOPS/GB x size. A `DATA` pool of 8 x 100 GB on
+  Tier 1 gives 8 x 1,000 = 8,000 IOPS. Size the **total pool** for the peak IOPS in
+  AWR (`Physical read/write IO requests per second`) plus headroom, not for
+  capacity alone. Larger volumes, or a higher tier, raise the IOPS ceiling.
+- Redo volumes can be small but still need the IOPS and latency of the top tier:
+  size them for the redo write rate (AWR `Redo size per second`), not for the
+  redo capacity.
+- Tier 3 backup LUNs are sized by the backup window: required MB/s = database
+  size / window. Check the result against the per-volume throughput limits in the
+  provider documentation.
+- Check current IOPS, throughput limits, and tier availability in the provider
+  documentation before sizing. They change over time.
+- Confirm the result with AWR/`iostat -D` after go-live (§15). If latency is above
+  target, check the tier and volume size **before** tuning AIX.
+
+**`queue_depth` on flash**
+
+Flash arrays can serve many more concurrent I/Os than spinning disk, so the default
+`queue_depth` (often 16 or 20) is too low and `sqfull` appears in `iostat -D`.
+Typical values are **64** for most flash LUNs and up to **256** for the busiest ones,
+when the driver and the array allow it.
+
+```bash
+# Purpose: raise queue_depth on flash LUNs (as root). Check the allowed range first.
+lsattr -Rl hdisk4 -a queue_depth            # allowed range for this driver
+lsattr -El hdisk4 -a queue_depth -a max_transfer
+chdev -l hdisk4 -a queue_depth=64 -U        # in use: only if lsattr shows "True+"
+chdev -l hdisk4 -a queue_depth=64 -P        # otherwise ODM only, applies at the next reboot
+# Busiest flash LUNs, only after checking the points below:
+chdev -l hdisk4 -a queue_depth=256 -P
+# Revert: chdev -l hdisk4 -a queue_depth=<old_value> -P
+```
+
+Before raising `queue_depth`:
+
+1. Record the current value, and confirm the new one is in the `lsattr -Rl` range.
+2. Confirm that `iostat -D` shows `sqfull` > 0 with `avgserv` below 1 ms (§4).
+   Otherwise the array, not the queue, is the bottleneck.
+3. Check the adapter budget: `num_cmd_elems` per port >= the sum of `queue_depth`
+   of the hdisks on that port. For example, 8 LUNs at `queue_depth` 256 behind one
+   port need 2,048 command elements. Above 256 on NPIV, the two APARs in §5 are
+   required.
+4. Check the array's per-host-port or per-volume queue limit. An overloaded array
+   makes a larger queue worse.
+5. Change `chdev` on in-use disks in a change window (see the safety rules in
+   `SKILL.md`), and apply the same value on every RAC node.
+6. Prefer more LUNs (§7a) over very large queue depths on few LUNs.
+
+**ASM allocation unit (`AU_SIZE`) on flash**
+
+```sql
+-- AU size is fixed at CREATE time (it can't be changed later). Run as grid, from the ASM instance.
+-- DATA: 4M is a good default on flash; 8M for very large (multi-TB) databases with large
+-- sequential I/O. REDO: 4M. Oracle's default is 1M, which is too small for large databases.
+CREATE DISKGROUP data EXTERNAL REDUNDANCY
+  DISK '/dev/rhdiskASMD01','/dev/rhdiskASMD02','/dev/rhdiskASMD03','/dev/rhdiskASMD04',
+       '/dev/rhdiskASMD05','/dev/rhdiskASMD06','/dev/rhdiskASMD07','/dev/rhdiskASMD08'
+  ATTRIBUTE 'compatible.asm' = '19.0', 'compatible.rdbms' = '19.0',
+            'au_size' = '4M';               -- or '8M'
+
+SELECT name, allocation_unit_size/1048576 AS au_mb, total_mb, free_mb
+FROM   v$asm_diskgroup;                     -- verify
+```
+
+- A larger AU gives fewer ASM extent map entries and larger contiguous stripes per
+  disk. Keep `max_transfer` and the FC `max_xfer_size` at 1 MB or more (§4, §5) so
+  large I/Os are not split.
+- With AU_SIZE 8M, the number of AUs per disk falls. Use equal LUNs and enough of
+  them (§7a), and avoid very small LUNs.
+- For `REDO` on flash, also use `sector_size` 4096 where supported (§10).
+- The AU size can't be altered. To change it, create a new disk group and move the
+  data (for example with RMAN or `ALTER DATABASE MOVE DATAFILE`), after an RMAN backup.
 
 ---
 
@@ -313,7 +447,7 @@ CREATE DISKGROUP data EXTERNAL REDUNDANCY
        '/dev/rhdiskASMD05','/dev/rhdiskASMD06','/dev/rhdiskASMD07','/dev/rhdiskASMD08'
   ATTRIBUTE 'compatible.asm'   = '19.0',
             'compatible.rdbms' = '19.0',
-            'au_size'          = '4M';     -- AU size can only be set at CREATE time
+            'au_size'          = '4M';     -- AU size can only be set at CREATE time (4M or 8M, §7b)
 ```
 
 | Storage | ASM redundancy | Why |

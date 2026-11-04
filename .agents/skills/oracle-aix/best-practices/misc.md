@@ -278,6 +278,10 @@ If AWR shows `db file sequential read` or `log file parallel write` above target
 check the tier and size **before** tuning AIX. A larger volume, or a higher tier
 where PowerVS allows changing it, raises the IOPS ceiling.
 
+Volume counts per pool (8 for data, 8 for redo, 2 to 4 for backups), flash/bflash
+tier selection, `queue_depth` on flash, and ASM `AU_SIZE` are in `io-storage.md`
+§7a and §7b.
+
 ---
 
 ## 9. Key Reference Documents

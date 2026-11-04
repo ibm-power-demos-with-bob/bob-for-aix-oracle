@@ -22,7 +22,7 @@ Built for **IBM Bob**. The skills also work with other agents that read
       diagnostics.md                # diagnosis flows (I/O, CPU, paging, ORA errors, RAC)
       cpu.md                        # SMT, CPU folding, vCPU/entitlement, Power11 migration
       memory.md                     # SGA page sizes, 16 MB pages, NUMA, vmo, DSO, AME
-      io-storage.md                 # AIO, hdisk/FC/MPIO, ASM on AIX, JFS2, LVM, redo
+      io-storage.md                 # AIO, hdisk/FC/MPIO, LUN layout, flash tiers, ASM on AIX, JFS2, LVM, redo
       network-rac.md                # no/ISNO, RAC interconnect, interface naming, HAIP
       os-prereqs.md                 # filesets, IOCP, users/limits, 19c install + patching
       misc.md                       # mutex spin, MARKHOT, SMT CPU %, PowerVS tiers, pigz

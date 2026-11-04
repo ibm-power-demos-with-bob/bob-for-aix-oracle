@@ -31,7 +31,7 @@ read only the files you need.
 | Diagnosis flows (slow I/O, CPU, paging, ORA errors, RAC network) | [`best-practices/diagnostics.md`](best-practices/diagnostics.md) |
 | SMT, CPU folding, vCPU/entitlement, LPAR sizing, Power11 migration | [`best-practices/cpu.md`](best-practices/cpu.md) |
 | SGA page size, 16 MB pages, NUMA/SRAD, vmo, paging space, DSO, AME | [`best-practices/memory.md`](best-practices/memory.md) |
-| AIO, hdisk/FC/MPIO tuning, ASM on AIX, JFS2 mount options, LVM striping, redo | [`best-practices/io-storage.md`](best-practices/io-storage.md) |
+| AIO, hdisk/FC/MPIO tuning, storage layout (LUN counts, flash tiers, `queue_depth`, ASM `AU_SIZE`), ASM on AIX, JFS2 mount options, LVM striping, redo | [`best-practices/io-storage.md`](best-practices/io-storage.md) |
 | RAC/public network, `no` tunables, interface naming, HAIP, jumbo frames | [`best-practices/network-rac.md`](best-practices/network-rac.md) |
 | Install/patch 19c on AIX, filesets, users/capabilities/limits, IOCP, OS prerequisites | [`best-practices/os-prereqs.md`](best-practices/os-prereqs.md) |
 | Mutex spin, MARKHOT, CPU % under SMT, PowerVS tiers, pigz/zlibNX, embedded JDK, known 19c issues | [`best-practices/misc.md`](best-practices/misc.md) |
@@ -266,6 +266,23 @@ ALTER SYSTEM RESET <parameter> SCOPE=SPFILE;              -- or return to the de
   `reserve_policy=no_reserve`, owned by `grid:asmadmin`, mode `660`) or on
   **JFS2**.
 - Raw LVs are not supported for database files.
+
+Storage layout checklist (details and commands in `best-practices/io-storage.md` §7):
+
+- [ ] **Data** (`DATA`): at least **8** equal-size LUNs (or a multiple of 8), spread
+  across array controllers and at least two NPIV/VSCSI adapters through dual VIOS.
+- [ ] **Redo** (`REDO`/`RECO`): at least **8** LUNs, or dedicated low write-latency
+  LUNs, in a pool separate from data.
+- [ ] **Backups** (`FRA`/`BACKUP` or JFS2 backup filesystems): **2 to 4** LUNs.
+- [ ] **Flash / tier**: put redo and OLTP data on the flash tiers (bflash: PowerVS
+  Tier 0 / Tier 1, or NVMe FlashSystem on-premises). Use Tier 3 for archive logs,
+  backups, and binaries. Never mix tiers in one disk group.
+- [ ] **`queue_depth`**: 64 on flash LUNs, up to 256 for the busiest ones, only if
+  `iostat -D` shows `sqfull` > 0 with `avgserv` < 1 ms. Keep `num_cmd_elems` per FC
+  port >= the sum of the `queue_depth` of its hdisks. Revert with
+  `chdev -l hdiskN -a queue_depth=<old> -P`.
+- [ ] **ASM `AU_SIZE`**: `4M` (or `8M` for very large databases) at `CREATE DISKGROUP`
+  time. It can't be changed later. Use `EXTERNAL REDUNDANCY` on enterprise SAN.
 
 Details are in `best-practices/io-storage.md`.
 
