@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from recipe_evals import (  # noqa: E402,F401
     TestAixAccuracy,
     TestHallucinationCases,
+    TestLabs,
     TestRecipeReferenceAnswers,
     TestRecipeStructure,
 )

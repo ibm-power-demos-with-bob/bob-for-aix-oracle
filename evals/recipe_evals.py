@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluations for the demo recipes in recipes/ and the AIX command hallucination cases.
+"""Evaluations for the eval recipes in evals/recipes/ and the AIX command hallucination cases.
 
 Static suite (no LLM, no AIX host needed), run with `python evals/run_evals.py` or
 `python evals/recipe_evals.py`:
@@ -29,7 +29,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 SKILLS = ROOT / ".agents" / "skills"
-RECIPES = ROOT / "recipes"
+RECIPES = ROOT / "evals" / "recipes"   # technical eval recipes (front matter + reference answer)
+LABS = ROOT / "recipes"                # human-oriented, step-by-step labs
 CASES_FILE = ROOT / "evals" / "hallucination_cases.yaml"
 MODES_FILE = ROOT / ".bob" / "custom_modes.yaml"
 
@@ -110,6 +111,7 @@ def code_lines(text: str, shell_only: bool = True) -> list[tuple[int, str]]:
 def knowledge_files() -> list[Path]:
     files = [p for p in SKILLS.rglob("*.md") if "operations" not in p.relative_to(SKILLS).parts]
     files += [p for p in RECIPES.glob("*.md")]
+    files += [p for p in LABS.glob("*.md")]
     return sorted(files)
 
 
@@ -276,6 +278,65 @@ class TestHallucinationCases(unittest.TestCase):
         answer = "Do not use systemctl on AIX.\n```bash\nlssrc -s sshd\n```\n"
         failures = grade_answer(recipe, answer, self.cases)
         self.assertFalse(any(f.startswith("H02") for f in failures))
+
+
+class TestLabs(unittest.TestCase):
+    """The human-oriented labs in recipes/ keep one structure and stay AIX-accurate."""
+    REQUIRED_SECTIONS = ("## Overview", "## Prerequisites", "## ✅ Success criteria",
+                         "## Key takeaways")
+    OVERVIEW_FIELDS = ("**Duration**", "**Difficulty**", "**Mode**", "**Output**")
+    MODE_NAMES = ("Oracle on AIX/Power", "AIX/Oracle Review", "Ansible AIX")
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.labs = sorted(p for p in LABS.glob("[0-9][0-9]-*.md"))
+        cls.index = (LABS / "README.md").read_text(encoding="utf-8")
+
+    def test_five_labs_exist_and_are_numbered_from_01(self) -> None:
+        self.assertEqual([p.name[:2] for p in self.labs], ["01", "02", "03", "04", "05"])
+
+    def test_labs_are_listed_in_the_index(self) -> None:
+        for lab in self.labs:
+            self.assertIn(f"({lab.name})", self.index, f"{lab.name}: not linked from recipes/README.md")
+
+    def test_lab_structure(self) -> None:
+        for lab in self.labs:
+            text = lab.read_text(encoding="utf-8")
+            self.assertRegex(text, rf"^# Lab {lab.name[:2]}: ", f"{lab.name}: title must be 'Lab {lab.name[:2]}: ...'")
+            for section in self.REQUIRED_SECTIONS:
+                self.assertIn(section, text, f"{lab.name}: missing section {section!r}")
+            for field in self.OVERVIEW_FIELDS:
+                self.assertIn(field, text, f"{lab.name}: overview lacks {field}")
+            self.assertTrue(any(m in text for m in self.MODE_NAMES), f"{lab.name}: no Bob mode named")
+
+    def test_each_step_has_a_copy_paste_prompt(self) -> None:
+        for lab in self.labs:
+            text = lab.read_text(encoding="utf-8")
+            steps = re.split(r"^## Step \d+:", text, flags=re.M)[1:]
+            self.assertGreaterEqual(len(steps), 4, f"{lab.name}: fewer than 4 steps")
+            for number, step in enumerate(steps, 1):
+                self.assertIn("```text", step, f"{lab.name}: Step {number} has no ```text prompt block")
+                self.assertIn("**Goal:**", step, f"{lab.name}: Step {number} has no **Goal:**")
+
+    def test_labs_have_at_least_one_trap_or_confirmation(self) -> None:
+        """Every lab either demonstrates a Linux-reflex trap or gates a change on a confirmation."""
+        for lab in self.labs:
+            text = lab.read_text(encoding="utf-8").lower()
+            self.assertTrue("**trap" in text or "confirm" in text, f"{lab.name}: no trap or confirmation")
+
+    def test_lab_shell_blocks_have_no_linuxisms(self) -> None:
+        for lab in self.labs:
+            for lineno, line in code_lines(lab.read_text(encoding="utf-8")):
+                for pattern in LINUXISMS:
+                    self.assertIsNone(pattern.search(line),
+                                      f"{lab.name}:{lineno}: Linux-only command: {line.strip()}")
+
+    def test_labs_are_written_in_english(self) -> None:
+        french = re.compile(r"\b(les|des|pour|avec|vous|est|une|dans|cette)\b")
+        for lab in self.labs + [LABS / "README.md"]:
+            for lineno, line in enumerate(lab.read_text(encoding="utf-8").splitlines(), 1):
+                self.assertIsNone(french.search(line.lower()),
+                                  f"{lab.name}:{lineno}: looks French: {line.strip()}")
 
 
 # --------------------------------------------------------------------------- CLI

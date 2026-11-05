@@ -29,7 +29,7 @@ must_not_include:
 **Goal:** show that Bob answers with AIX-native commands only, and says "verify"
 instead of inventing a flag. This is the demo for the "hallucinated AIX command
 lines" problem. Every trap below is also a case in
-[`evals/hallucination_cases.yaml`](../evals/hallucination_cases.yaml).
+[`evals/hallucination_cases.yaml`](../hallucination_cases.yaml).
 
 ## Demo script
 

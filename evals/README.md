@@ -14,11 +14,16 @@ This directory contains automated evaluation suites to verify the accuracy, port
      - Storage layout best practices: minimum 8 data LUNs, 8 redo LUNs, 2-4 backup LUNs, bflash/Tier 1 Flash tiering, `queue_depth` (64-256), `AU_SIZE=4M/8M`.
      - CPU & memory sizing: Power10 SMT-8 entitlement, large pages (`ORACLE_SGA_PGSZ=16m`, `vmo_lgpg_regions`), memory affinity (`AIXTHREAD_SCOPE=S`).
   4. **PowerVS Live Compatibility**: Scenario checks tailored for IBM Cloud PowerVS instance `aix-oracle01` (Power10, AIX 7.3 TL04, General-Flash-96 storage pool).
-- `recipe_evals.py`: evals for the demo recipes in [`../recipes/`](../recipes/README.md):
+- `recipes/`: the technical **eval recipes** R00 to R05 (front matter with the prompt and the
+  required / forbidden patterns, then the reference answer). See [`recipes/README.md`](recipes/README.md).
+  They were moved here from the top-level `recipes/` directory, which now holds the
+  human-oriented labs (see [`../recipes/`](../recipes/README.md)).
+- `recipe_evals.py`: evals for the eval recipes in `recipes/` and for the labs in [`../recipes/`](../recipes/README.md):
   1. **Recipe structure**: required front matter, unique `R##` ids, known Bob mode, existing skills and `reads` files.
   2. **Reference answers**: each recipe's reference answer satisfies its own `must_include` / `must_not_include` rules.
-  3. **AIX accuracy**: shell blocks in recipes and skills contain no Linux-only command and none of the known wrong forms.
+  3. **AIX accuracy**: shell blocks in eval recipes, labs and skills contain no Linux-only command and none of the known wrong forms.
   4. **Hallucination cases**: every case in `hallucination_cases.yaml` has a regex that matches its example, a documented fix, and is rejected by the grader.
+  5. **Labs**: five numbered labs linked from the index, each with the same sections, a copy-and-paste `text` prompt and a goal in every step, a trap or a confirmation, English text.
 - `hallucination_cases.yaml`: known wrong AIX command lines (`free -m`, `iostat -x`, `mpstat -P`, `alt_disk_copy` without `-B`, ...) with the AIX-native fix and its source. Add a case only when the correct form is documented.
 
 ## Running Evaluations

@@ -32,12 +32,15 @@ Built for **IBM Bob**. The skills also work with other agents that read
   rules-<mode>/                     # always-on rules loaded for each mode
   skills/<name>/SKILL.md            # generated pointers to .agents/skills (Bob discovery)
   commands/oracle-aix-setup.md      # /oracle-aix-setup slash command
-recipes/                            # guided demos (R00-R05), also used as evals
-  README.md                         # how to run a demo and the recipe format
+recipes/                            # step-by-step labs for AIX + Oracle administrators (Lab 01-05)
+  README.md                         # prerequisites, lab list, how a lab works
+  0N-*.md                           # one lab per task, with copy-and-paste prompts
 evals/
-  run_evals.py                      # runs every eval (skills + recipes + hallucination cases)
-  recipe_evals.py                   # recipe checks and answer grader (--prompts, --grade)
+  run_evals.py                      # runs every eval (skills + recipes + labs + hallucination cases)
+  recipe_evals.py                   # recipe/lab checks and answer grader (--prompts, --grade)
   hallucination_cases.yaml          # known wrong AIX command lines and their fixes
+  recipes/                          # technical eval recipes (R00-R05) with reference answers
+    README.md                       # eval recipe format and how to grade an answer
 scripts/
   validate.py                       # static checks (run in CI)
   sync_bob_skills.py                # regenerate .bob/skills pointers
@@ -86,6 +89,12 @@ installed under `.agents/skills/oracle-aix/operations/`.
 ---
 
 ## Usage
+
+### Learn with the labs
+
+New to Bob on AIX and Oracle? Start with the [labs](recipes/README.md): five guided
+sessions (assessment, install preparation, backup, patching, performance) with prompts
+you copy and paste into Bob.
 
 ### IBM Bob
 

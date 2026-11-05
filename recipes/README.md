@@ -1,72 +1,85 @@
-# Recipes: demos of the AIX / Oracle Bob modes
+# Labs: learn IBM Bob on AIX and Oracle, step by step
 
-Each recipe is a **guided demo** of one Bob mode on a realistic task, and at the same
-time an **evaluation case**: its front matter holds the prompt and the patterns a
-correct answer must (and must not) contain. `evals/recipe_evals.py` reads these files,
-so a demo script and its test never drift apart.
+These labs are written for **AIX and Oracle system administrators**. Each lab is a
+guided session with IBM Bob on a realistic task. You copy a prompt, paste it into the Bob
+chat, look at what Bob does, and move to the next step. No scripting knowledge is needed.
 
-| ID | Recipe | Mode | Skills it exercises |
-|---|---|---|---|
-| R00 | [AIX command accuracy](00-aix-command-accuracy.md) | `aix` | `aix` |
-| R01 | [Oracle install preparation](01-oracle-install-prereqs.md) | `oracle-aix` | `oracle-aix` |
-| R02 | [Assessment / best practices](02-assessment-best-practices.md) | `oracle-aix`, `aix-review` | `oracle-aix` |
-| R03 | [Backup](03-backup.md) | `oracle-aix` | `aix`, `oracle-aix`, `ansible-aix` |
-| R04 | [Patching AIX + Oracle + Live Kernel Update](04-patching-and-live-kernel-update.md) | `oracle-aix` | `aix`, `oracle-aix`, `ansible-aix` |
-| R05 | [Performance and monitoring](05-performance-monitoring.md) | `oracle-aix` | `aix`, `oracle-aix` |
+If you are looking for the technical test cases that grade Bob's answers automatically,
+they are in [`../evals/recipes/`](../evals/recipes/README.md).
 
-## How to run a demo
+## The labs
 
-1. Open the repository in IBM Bob and select the mode named in the recipe.
-2. Paste the `prompt` from the recipe front matter, or print it:
+| Lab | Title | Mode | Duration | Level | Changes the system? |
+|---|---|---|---|---|---|
+| [Lab 01](01-prepare-oracle-install.md) | Prepare an LPAR for an Oracle 19c + ASM install | 🗄️ Oracle on AIX/Power | 40 min | Intermediate | No: Bob writes scripts, you run them |
+| [Lab 02](02-assess-best-practices.md) | Assess an Oracle LPAR against best practices | 🗄️ Oracle on AIX/Power, 🔍 AIX/Oracle Review | 30 min | Beginner | No: read-only |
+| [Lab 03](03-backup-aix-and-oracle.md) | Back up AIX and Oracle, and plan the restore | 🗄️ Oracle on AIX/Power, ⚙️ Ansible AIX | 40 min | Intermediate | Only after your explicit "yes" |
+| [Lab 04](04-patch-aix-oracle-lku.md) | Patch AIX and Oracle, and decide on Live Kernel Update | 🗄️ Oracle on AIX/Power, 🔍 AIX/Oracle Review | 45 min | Advanced | No: plan and previews only |
+| [Lab 05](05-performance-and-monitoring.md) | Find a performance problem and set up monitoring | 🗄️ Oracle on AIX/Power | 40 min | Intermediate | Only the monitoring step, after your "yes" |
 
-   ```bash
-   python evals/recipe_evals.py --prompts
-   ```
+Suggested path: Lab 02 first if you want a quick win (read-only, 30 minutes), then
+Lab 01, 03, 04 and 05 in any order. Lab 03 comes before Lab 04, because the patching
+lab reuses the backup as its rollback path.
 
-3. Follow the "Demo script" section of the recipe. The "Reference answer" section is
-   what a correct answer looks like.
-4. Optional: grade Bob's real answer against the recipe's patterns:
+## What you need
 
-   ```bash
-   python evals/recipe_evals.py --grade R04 answer.txt
-   ```
+- **IBM Bob** with this repository open as the workspace. The four modes appear in the
+  mode picker (see the [main README](../README.md#bob-modes)). Check *Settings → Skills*:
+  `aix`, `ansible-aix` and `oracle-aix` must be listed.
+- **An AIX 7.3 LPAR on IBM Power** with Oracle Database 19c, ideally a test system.
+  The labs were written against a Power10 LPAR on IBM Cloud PowerVS, and they work on
+  any Power system.
+- **A way for the commands to reach the LPAR.** Pick one:
+  1. Bob has a shell on the LPAR (for example an SSH session in the Bob terminal). Bob
+     runs the read-only commands itself and asks before any other command.
+  2. Bob has no access. Bob prints the commands, you run them in your own SSH session,
+     and you paste the output back into the chat. Every lab works this way too.
+- **Root access** for the AIX steps, and the Oracle software owner (`oracle`, and `grid`
+  with ASM or RAC) for the Oracle steps. Bob never uses `root` for Oracle tools.
 
-   The grader fails the answer if a required item is missing or a forbidden pattern
-   (a Linux-ism, an invented flag) is present.
+## How a lab works
 
-## Recipe file format
+Every step has the same four parts:
 
-```yaml
----
-id: R04                       # unique, R + two digits
-title: ...
-mode: oracle-aix              # a slug from .bob/custom_modes.yaml
-skills: [aix, oracle-aix]     # skills under .agents/skills/
-reads: [path, ...]            # repository files the answer must be grounded in
-prompt: >-                    # the text to paste into Bob
-  ...
-must_include: ["literal", ...]    # case-insensitive literal strings
-must_not_include: ['regex', ...]  # regular expressions (single-quoted YAML)
----
-```
+1. **Goal** of the step in one sentence.
+2. **Prompt**, in a `text` block. Copy it as is. Text between `<` and `>` is a value
+   you replace, and every such value is explained right under the prompt.
+3. **What to observe**: what a good answer from Bob looks like. Bob's wording varies from
+   run to run. Check the *content* (the commands, the questions, the warnings), not the
+   exact sentences.
+4. **If it goes differently**: what to do when Bob's answer is not what you expected.
 
-Rules for writing a recipe:
+Some steps are marked **Trap**. A trap is a prompt that a Linux administrator, or a less
+careful assistant, would answer with a Linux command. Bob must refuse the Linux form and
+give the AIX one. Traps are the best moments for a live demonstration.
 
-- English only, as for every file in this repository.
-- Every command must be AIX-native and bash compatible. `scripts/validate.py` and the
-  evals scan the shell blocks for Linux-isms.
-- The reference answer must satisfy its own `must_include` and `must_not_include`
-  lists. The evals check this, so a recipe cannot ship with a contradictory reference.
-- Never invent a flag, tunable, or module parameter. Check it in the IBM
-  documentation and cite the companion file the answer comes from.
-- Destructive steps are previewed, confirmed, and shown with their revert.
+## Safety rules used in all labs
 
-## Relation to the evals
+- **Read first, change later.** Every lab starts with read-only commands.
+- **Bob proposes, you confirm.** Anything that changes the system, such as `chdev`,
+  `mkuser`, `installp`, `opatch apply` or an RMAN `DELETE`, must come with its preview,
+  its rollback and a question "may I run this?". If Bob runs one without asking, stop the
+  session and report it.
+- **Test system first.** Do the labs on a non-production LPAR. A lab that has an effect
+  on the system says so in its overview.
+- **Backup before change.** The labs that go further than reading start with a `mksysb`
+  or an RMAN backup (see Lab 03).
+- **Oracle commands need the Oracle environment.** Before `sqlplus`, `rman`, `opatch` or
+  `srvctl`, Bob checks `ORACLE_HOME`, `ORACLE_SID`, `ORACLE_BASE`, `PATH` and `LIBPATH`
+  (never `LD_LIBRARY_PATH` on AIX), and asks you which OS user owns the software if it
+  cannot tell.
 
-- [`evals/hallucination_cases.yaml`](../evals/hallucination_cases.yaml): one case per
-  known wrong command (Linux-ism or invented flag) with the right AIX replacement.
-  Recipe R00 and R05 are the live demos of these cases.
-- [`evals/recipe_evals.py`](../evals/recipe_evals.py): structure, grounding, reference
-  answer consistency, hallucination coverage, and the answer grader.
-- [`evals/run_evals.py`](../evals/run_evals.py): the existing skill checks. It also runs
-  the recipe evals, so one command covers everything.
+## Where the generated files go
+
+Bob saves its documents and scripts in a `work/` directory of the workspace, for example
+`work/lab01/prepare-os.sh`. Review every generated script before you run it on a system.
+The directory is yours: delete it whenever you want to restart a lab.
+
+## Related material
+
+- Skills: [`aix`](../.agents/skills/aix/SKILL.md),
+  [`ansible-aix`](../.agents/skills/ansible-aix/SKILL.md),
+  [`oracle-aix`](../.agents/skills/oracle-aix/SKILL.md).
+- Technical eval recipes and answer grader: [`../evals/recipes/`](../evals/recipes/README.md).
+- Known wrong command lines that Bob must never produce:
+  [`../evals/hallucination_cases.yaml`](../evals/hallucination_cases.yaml).
