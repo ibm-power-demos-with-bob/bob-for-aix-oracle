@@ -1,5 +1,11 @@
 # bob-for-aix-oracle
 
+**Quick install (global):** paste this into your AI agent (IBM Bob, Claude Code, Cursor, Copilot, …):
+
+```text
+Install the skills in .agents/skills/ from https://github.com/ibm-power-demos-with-bob/bob-for-aix-oracle globally for yourself (your user-level skills directory), then run the .bob/commands/oracle-aix-setup.md workflow to clone and install the Oracle skills.
+```
+
 AI agent skills and modes for IBM AIX system administration, Ansible automation on AIX,
 and Oracle Database administration on AIX / IBM Power Systems.
 
@@ -112,9 +118,9 @@ at it. Each skill's `SKILL.md` is self-contained, and it references its companio
 with relative paths.
 
 ```bash
-git clone https://github.com/<your-org>/bob-for-aix-oracle.git
+git clone https://github.com/ibm-power-demos-with-bob/bob-for-aix-oracle.git
 # or add as a git submodule
-git submodule add https://github.com/<your-org>/bob-for-aix-oracle.git .agents-aix
+git submodule add https://github.com/ibm-power-demos-with-bob/bob-for-aix-oracle.git .agents-aix
 ```
 
 To install the Oracle `db` skill content without Bob, run the bash or PowerShell block in
