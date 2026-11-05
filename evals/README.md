@@ -76,6 +76,24 @@ Findings fixed in the repository:
 - R03 uses `/backup`, which does not exist on this LPAR (`/u01` 50 GB, `orafsvg` has about
   10 GB free): the recipe's `df -g` check must come first. This is expected for a generic recipe.
 
-Not run on the host, because they change the system: `stopsrc`, `mkuser`, `mksysb`,
-`alt_disk_copy`, `geninstall -k -d`, `opatch`, tunable changes.
+Change-making commands replayed with the owner's agreement, each one cleaned up afterwards:
+
+- R00 user flow: `mkuser pgrp=staff groups=staff home=/home/bobtest shell=/usr/bin/ksh bobtest`,
+  `lsuser -f`, `pwdadm -f ADMCHG` all work as written; the temporary account was removed with
+  `rmuser -p`. `rmuser` leaves the home directory (it kept the `.profile` created by `mkuser`),
+  so a recipe that removes a user must say to remove the home directory by hand.
+- R00 service flow: `stopsrc -s` / `startsrc -s` / `lssrc -s` were run on a throw-away SRC
+  subsystem (`mkssys` / `rmssys`), not on `sshd`. `lssrc -s` shows `active` then `inoperative`
+  as the recipe expects. `sshd` stayed `active` with the same PID throughout.
+- Previews: `install_all_updates -d <dir> -p -Y` reports "Device ... could not be accessed" for a
+  missing directory and changes nothing; `emgr -p -e <file>` starts an "EFIX MANAGER PREVIEW".
+
+Not run on the host, because they change the system or need resources it lacks: `mksysb`
+(no `/backup`), `alt_disk_copy` (no free disk), `geninstall -k -d`, `opatch`, tunable changes,
+and a restart of the real `sshd`.
+
+Ansible snippets of R03 and R04 were checked outside the LPAR: `ansible-lint --profile production`
+passes on both, and every parameter used exists in `ansible-doc` for `ibm.power_aix.backup`,
+`ibm.power_aix.alt_disk` and the `live_kernel_update` role (collection installed with
+`ansible-galaxy` in a virtualenv on WSL).
 

@@ -76,6 +76,9 @@ Expected caveats in the answer:
   by SSH, keep a second session open before restarting.
 - `mkuser` writes `/etc/passwd` and `/etc/security/*`; the user has no password
   until `passwd jdoe` is run by root.
+- `rmuser -p jdoe` removes the account but **not** the home directory (checked on
+  AIX 7.3 TL4: `/home/<user>/.profile` stays). Remove the directory by hand, and
+  only after checking what it contains.
 
 ## What this recipe demonstrates
 
