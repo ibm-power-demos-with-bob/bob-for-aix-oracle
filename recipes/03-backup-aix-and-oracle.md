@@ -10,7 +10,7 @@ step, and get the Ansible version of the AIX layer.
 **Duration**: 40 minutes
 **Difficulty**: Intermediate
 **Mode**: 🗄️ Oracle on AIX/Power, then ⚙️ Ansible AIX
-**Target**: an AIX 7.3 LPAR running Oracle 19c, with free space for a backup
+**Target**: an AIX LPAR running Oracle Database, with free space for a backup
 **Output**: `work/lab03/backup-plan.md` and `work/lab03/backup-aix.yml`
 
 > ⚠️ **Backup commands write data but do not change the system.** The only destructive
@@ -37,7 +37,7 @@ step, and get the Ansible version of the AIX layer.
 **Prompt:**
 
 ```text
-I must back up this AIX 7.3 LPAR before our maintenance window: the AIX rootvg, the Oracle
+I must back up this AIX LPAR before our maintenance window: the AIX rootvg, the Oracle
 home, and the database with RMAN. Give me the plan in layers. For each layer: who runs it
 (root, oracle or grid), the command, how I verify the backup, and how I restore it. Do
 not run anything yet, and save the plan as work/lab03/backup-plan.md.

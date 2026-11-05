@@ -13,7 +13,7 @@ The same files are the support of the automated tests: every step is a test case
 
 | Lab | Title | Mode | Duration | Level | Changes the system? |
 |---|---|---|---|---|---|
-| [Lab 01](01-prepare-oracle-install.md) | Prepare an LPAR for an Oracle 19c + ASM install | 🗄️ Oracle on AIX/Power | 40 min | Intermediate | No: Bob writes scripts, you run them |
+| [Lab 01](01-prepare-oracle-install.md) | Prepare an LPAR for an Oracle + ASM install | 🗄️ Oracle on AIX/Power | 40 min | Intermediate | No: Bob writes scripts, you run them |
 | [Lab 02](02-assess-best-practices.md) | Assess an Oracle LPAR against best practices | 🗄️ Oracle on AIX/Power, 🔍 AIX/Oracle Review | 30 min | Beginner | No: read-only |
 | [Lab 03](03-backup-aix-and-oracle.md) | Back up AIX and Oracle, and plan the restore | 🗄️ Oracle on AIX/Power, ⚙️ Ansible AIX | 40 min | Intermediate | Only after your explicit "yes" |
 | [Lab 04](04-patch-aix-oracle-lku.md) | Patch AIX and Oracle, and decide on Live Kernel Update | 🗄️ Oracle on AIX/Power, 🔍 AIX/Oracle Review | 45 min | Advanced | No: plan and previews only |
@@ -28,9 +28,8 @@ lab reuses the backup as its rollback path.
 - **IBM Bob** with this repository open as the workspace. The four modes appear in the
   mode picker (see the [main README](../README.md#bob-modes)). Check *Settings → Skills*:
   `aix`, `ansible-aix` and `oracle-aix` must be listed.
-- **An AIX 7.3 LPAR on IBM Power** with Oracle Database 19c, ideally a test system.
-  The labs were written against a Power10 LPAR on IBM Cloud PowerVS, and they work on
-  any Power system.
+- **An AIX LPAR on IBM Power** with Oracle Database, ideally a test system. The labs work
+  on any Power system, on premises or in the cloud.
 - **A way for the commands to reach the LPAR.** Pick one:
   1. Bob has a shell on the LPAR (for example an SSH session in the Bob terminal). Bob
      runs the read-only commands itself and asks before any other command.

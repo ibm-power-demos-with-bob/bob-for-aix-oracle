@@ -10,8 +10,7 @@ monitoring (nmon recordings and an error-log alert) so that you see it next time
 **Duration**: 40 minutes
 **Difficulty**: Intermediate
 **Mode**: 🗄️ Oracle on AIX/Power
-**Target**: an AIX 7.3 LPAR (Power10) running Oracle 19c, ideally during or just after
-a slowdown
+**Target**: an AIX LPAR running Oracle Database, ideally during or just after a slowdown
 **Output**: `work/lab05/diagnosis.md`
 
 > ✅ **Steps 1 to 5 are read-only.** The monitoring in Step 6 changes the system (a cron
@@ -35,9 +34,9 @@ a slowdown
 **Prompt:**
 
 ```text
-Users report that the Oracle database on our AIX 7.3 Power10 LPAR has been slow since
-09:00, and "log file sync" is high in AWR. Find the cause, and then set up monitoring so
-we see it next time. Do not change anything yet. Start with what I should check in Oracle.
+Users report that the Oracle database on our AIX LPAR has been slow since 09:00, and
+"log file sync" is high in AWR. Find the cause, and then set up monitoring so we see it
+next time. Do not change anything yet. Start with what I should check in Oracle.
 ```
 
 <!-- eval
@@ -149,11 +148,11 @@ system and let Bob explain what each figure would mean.
 
 | Finding | Meaning | Next step Bob should give |
 |---|---|---|
-| High `avgserv` on the redo hdisks, `sqfull` = 0 | Storage or path side | Check the PowerVS tier and the volume size **before** tuning AIX. Look at `errpt` for path or FC errors. Involve the storage or VIOS team |
+| High `avgserv` on the redo hdisks, `sqfull` = 0 | Storage or path side | Check the storage tier and the volume size **before** tuning AIX. Look at `errpt` for path or FC errors. Involve the storage or VIOS team |
 | Low `avgserv`, `sqfull` > 0 | hdisk queue too small | Raise `queue_depth` (64, up to 256), but only if `num_cmd_elems` covers the sum, with a revert, in a change window |
 | "No Command Resource Count" growing | FC adapter queue | Review `num_cmd_elems` |
 | `lparstat` `%entc` near 100 on a capped LPAR | CPU limited by entitlement | Review entitlement and virtual CPUs |
-| `topas` shows about `100 / cores` % for one busy thread | Normal under SMT8, not an idle process | Confirm with AWR CPU time |
+| `topas` shows about `100 / cores` % for one busy thread | Normal under SMT, not an idle process | Confirm with AWR CPU time |
 
 Bob should keep its answer to **what the evidence supports**, and say "I cannot conclude
 from this" when the figures do not show a cause.
@@ -173,13 +172,13 @@ Is the process waiting, or is it using a full CPU?
 
 <!-- eval
 mode: oracle-aix
-must_include: ["SMT8", "100 / cores", "AWR"]
+must_include: ["SMT", "100 / cores", "AWR"]
 must_not_include: []
 -->
 
 **What to observe:**
 
-- Bob explains that under SMT8 a single busy thread can show about **100 / cores** percent
+- Bob explains that under SMT a single busy thread can show about **100 / cores** percent
   (here 25%) while it **uses its core fully**. That is *not* an idle process.
 - It tells you to confirm with the Oracle side (AWR CPU time) and not to conclude from the
   OS percentage alone.

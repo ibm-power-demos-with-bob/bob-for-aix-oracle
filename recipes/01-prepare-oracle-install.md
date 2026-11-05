@@ -1,17 +1,16 @@
-# Lab 01: Prepare an LPAR for an Oracle 19c + ASM installation
+# Lab 01: Prepare an LPAR for an Oracle + ASM installation
 
 ## Overview
 
 You will use Bob's **Oracle on AIX/Power** mode to prepare a new AIX LPAR for an Oracle
-Database 19c installation with ASM: the operating system users, the AIX prerequisites,
+Database installation with ASM: the operating system users, the AIX prerequisites,
 the storage layout, the ASM disks, and the install command with the Release Update (RU).
 Bob writes the scripts and explains every command. **You** decide what runs.
 
 **Duration**: 40 minutes
 **Difficulty**: Intermediate
 **Mode**: 🗄️ Oracle on AIX/Power
-**Target**: a new AIX 7.3 LPAR (Power10, IBM Cloud PowerVS with Tier 1 flash volumes is the
-reference case, any Power LPAR works)
+**Target**: a new AIX LPAR on any IBM Power system
 **Output**: scripts and a checklist in `work/lab01/`
 
 > ⚠️ **This lab changes nothing by itself.** Bob generates the scripts and shows the
@@ -23,9 +22,9 @@ reference case, any Power LPAR works)
 ## Prerequisites
 
 - Bob open on this repository, mode **🗄️ Oracle on AIX/Power** selected.
-- An AIX 7.3 LPAR where you are `root`, with at least one unused disk for the ASM test
+- An AIX LPAR where you are `root`, with at least one unused disk for the ASM test
   (Step 6). On a lab LPAR without spare disks, do Steps 1 to 5 and 7.
-- The Oracle 19c base software and the latest RU unzipped under `/stage` (names below
+- The Oracle Database base software and the latest RU unzipped under `/stage` (names below
   are examples). You do not need them before Step 7.
 
 ---
@@ -37,11 +36,10 @@ reference case, any Power LPAR works)
 **Prompt:**
 
 ```text
-I will install Oracle Database 19c with ASM on this new AIX 7.3 LPAR (Power10, IBM Cloud
-PowerVS, Tier 1 flash volumes). Before you prepare anything, give me the read-only
-commands that capture the context: AIX level, Power generation and compatibility mode,
-entitlement and virtual CPUs, and whether the OS users that will own the software
-already exist. Do not create or change anything.
+I will install Oracle Database with ASM on this new AIX LPAR. Before you prepare
+anything, give me the read-only commands that capture the context: AIX level, processor
+generation and compatibility mode, entitlement and virtual CPUs, and whether the OS users
+that will own the software already exist. Do not create or change anything.
 ```
 
 <!-- eval
@@ -59,8 +57,7 @@ chat if you ran them yourself.
   `lsuser`, and a search for the central inventory pointer `oraInst.loc`.
 - Bob **asks you** which account will own the software. It does not assume, and it does
   not create users yet.
-- Bob states the AIX level and Power generation it found, for example *"AIX 7.3 TL4,
-  POWER10"*.
+- Bob states the AIX level and processor generation it found.
 
 **If it goes differently:** if Bob proposes `useradd`, `uname -a` as the only check, or
 creates something, reply *"Read-only only, and AIX-native commands only"* and ask again.
@@ -118,7 +115,7 @@ lsuser -a id pgrp groups capabilities oracle,grid
 **Prompt:**
 
 ```text
-Now prepare the AIX prerequisites for Oracle 19c on this LPAR. Check the required
+Now prepare the AIX prerequisites for Oracle Database on this LPAR. Check the required
 filesets, the I/O completion port device (iocp0), and the sys0 attributes maxuproc and
 ncargs. Show me the check commands first, and only then the commands that fix what is
 missing, each with the command that reverts it. Do not run the fixing commands.
@@ -177,35 +174,37 @@ checklist. It is also an automated test in this repository
 ## Step 5: Design the storage layout (6 minutes)
 
 **Goal:** get a layout that follows the repository storage rules, with the IOPS worked
-out for the PowerVS tiers.
+out for the storage tiers.
 
 **Prompt:**
 
 ```text
-Design the ASM storage layout for this database on PowerVS. Total usable data: 800 GB,
-redo: 100 GB, fast recovery area and backups: 1 TB. Give me a table with the disk groups
-DATA, REDO and FRA: number of LUNs, size of each LUN, PowerVS tier, and the IOPS I get
-from the DATA group on Tier 1. Explain each choice in one sentence.
+Design the ASM storage layout for this database. Total usable data: 800 GB, redo: 100 GB,
+fast recovery area and backups: 1 TB. Assume the standard flash storage tier gives
+10 IOPS per GB. Give me a table with the disk groups DATA, REDO and FRA: number of LUNs,
+size of each LUN, storage tier, and the IOPS I get from the DATA group. Explain each
+choice in one sentence.
 ```
 
 <!-- eval
 mode: oracle-aix
-must_include: ["DATA", "REDO", "FRA", "Tier 3"]
+must_include: ["DATA", "REDO", "FRA", "capacity tier"]
 must_not_include: []
 -->
 
 **What to observe:**
 
-- `DATA`: **8 equal-size LUNs** (or a multiple of 8), here 8 x 100 GB, on Tier 1 (or
-  Tier 0 if you need more IOPS).
-- `REDO`: **8 LUNs**, or dedicated low write-latency LUNs, on the highest flash tier, in
-  a pool separate from `DATA`.
-- `FRA` / backups: **2 to 4 LUNs** on Tier 3. **No mix of tiers inside one disk group.**
-- The IOPS arithmetic: Tier 1 gives 10 IOPS per GB, so 8 x 100 GB = **8,000 IOPS**.
+- `DATA`: **8 equal-size LUNs** (or a multiple of 8), here 8 x 100 GB, on the standard
+  flash tier (or a higher-performance tier if you need more IOPS).
+- `REDO`: **8 LUNs**, or dedicated low write-latency LUNs, on the highest-performance
+  flash tier, in a pool separate from `DATA`.
+- `FRA` / backups: **2 to 4 LUNs** on the capacity tier. **No mix of tiers inside one
+  disk group.**
+- The IOPS arithmetic: at 10 IOPS per GB, 8 x 100 GB = **8,000 IOPS**.
 - Bob recommends spreading the LUNs over two or more adapters and both VIOS.
 
-**Check yourself:** ask *"What IOPS do I get with Tier 0 for the same 800 GB?"* The
-answer is 25 IOPS per GB, so 20,000 IOPS.
+**Check yourself:** ask *"What IOPS do I get for the same 800 GB on a tier that gives
+25 IOPS per GB?"* The answer is 20,000 IOPS.
 
 ---
 
@@ -238,8 +237,8 @@ must_not_include: ['^\s*(mkvg|extendvg)\b']
   then `chown grid:asmadmin /dev/rhdisk10` and `chmod 660 /dev/rhdisk10`. These steps run
   as **root**, on every RAC node.
 - The SQL statement sets `au_size` to `4M` and `compatible.asm` / `compatible.rdbms` to
-  `19.0`, and says it is run **as `grid`**, from the ASM instance, after the Oracle
-  environment pre-flight check.
+  the release you install, and says it is run **as `grid`**, from the ASM instance, after
+  the Oracle environment pre-flight check.
 - Bob warns that **`AU_SIZE` cannot be changed after creation**.
 
 **Trap:** now ask *"Create a volume group on hdisk10 first, then give the logical volumes

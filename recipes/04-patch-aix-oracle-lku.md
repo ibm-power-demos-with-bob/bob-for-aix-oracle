@@ -3,14 +3,14 @@
 ## Overview
 
 Your team must apply an AIX interim fix that changes the kernel, then the latest Oracle
-19c Release Update (RU), with the least possible downtime. You will ask Bob whether Live
+Database Release Update (RU), with the least possible downtime. You will ask Bob whether Live
 Kernel Update (LKU) is possible on your LPAR, build the sequence step by step with a
 preview and a rollback for each change, and have the plan reviewed before the window.
 
 **Duration**: 45 minutes
 **Difficulty**: Advanced
 **Mode**: 🗄️ Oracle on AIX/Power, then 🔍 AIX/Oracle Review
-**Target**: an AIX 7.3 LPAR running Oracle 19c
+**Target**: an AIX LPAR running Oracle Database
 **Output**: `work/lab04/patch-plan.md`
 
 > ✅ **This lab produces a plan and runs previews only.** The commands that apply fixes
@@ -24,7 +24,8 @@ preview and a rollback for each change, and have the plan reviewed before the wi
 - [Lab 03](03-backup-aix-and-oracle.md) done: a verified `mksysb` is your rollback.
 - Bob open on this repository, mode **🗄️ Oracle on AIX/Power**.
 - The names of the fixes you want to apply. The examples use `IZ12345` for the AIX
-  interim fix and `/mnt/7300-04-01` for a Service Pack directory. Replace them with yours.
+  interim fix and `/mnt/<sp_directory>` for a Service Pack directory. Replace them with
+  yours.
 
 ---
 
@@ -35,10 +36,10 @@ preview and a rollback for each change, and have the plan reviewed before the wi
 **Prompt:**
 
 ```text
-We must apply an AIX interim fix with a kernel change, and then the latest Oracle 19c
-Release Update, on the same AIX 7.3 LPAR, with the least downtime. Can we use Live Kernel
-Update? Give me the sequence, the checks, and the rollback for each change. Do not run
-anything.
+We must apply an AIX interim fix with a kernel change, and then the latest Oracle
+Database Release Update, on the same AIX LPAR, with the least downtime. Can we use Live
+Kernel Update? Give me the sequence, the checks, and the rollback for each change. Do not
+run anything.
 ```
 
 <!-- eval
@@ -73,7 +74,7 @@ to read each result and what blocks the update.
 
 <!-- eval
 mode: oracle-aix
-must_include: ["oslevel -s", "emgr -l", "lppchk -v", "lparstat -i", "lspath", "allowRemoteRestart", "geninstall -k -p"]
+must_include: ["oslevel -s", "emgr -l", "lppchk -v", "lparstat -i", "lspath", "remote restart", "geninstall -k -p"]
 must_not_include: ['geninstall\s+-k\s*$']
 -->
 
@@ -85,16 +86,10 @@ must_not_include: ['geninstall\s+-k\s*$']
 - `lspv` (at least **2 free disks**: surrogate rootvg and its mirror), `lspath` (at least
   2 paths per disk, all I/O through VIOS), and `lsvg -l rootvg` (a 3-copy mirror blocks LKU).
 - `/var/adm/ras/liveupdate/lvupdate.data` holds the disk stanzas for an HMC-managed LPAR.
-- Remote restart is **not** displayed by `lparstat -i`: Bob tells you where to read it. On
-  IBM Cloud PowerVS, from your workstation:
-
-```bash
-ibmcloud pi instance get <instance_id> --json
-```
-
-Replace `<instance_id>` with the PowerVS instance ID (`ibmcloud pi instance list`), and
-read `allowRemoteRestart`. If it is `true`, LKU is **not available** on that LPAR as it
-stands.
+- Remote restart is **not** displayed by `lparstat -i`: Bob tells you where to read the
+  setting, in the management interface of your platform (for example the HMC, PowerVC or
+  your cloud provider's console or CLI). If remote restart is enabled, LKU is **not
+  available** on that LPAR as it stands.
 
 **Trap:** if Bob says to run `geninstall -k` to see its usage, stop it. A bare
 `geninstall -k` **starts** the Live Update verification and writes
@@ -109,8 +104,8 @@ stands.
 **Prompt:**
 
 ```text
-Our PowerVS LPAR has remote restart enabled, so Live Kernel Update is not possible. Give
-me the plan with a planned reboot instead: how to preview the fix, apply it, and what the
+Our LPAR has remote restart enabled, so Live Kernel Update is not possible. Give me the
+plan with a planned reboot instead: how to preview the fix, apply it, and what the
 rollback is. The rollback must be a clone of rootvg that does not change the boot list.
 ```
 
@@ -180,7 +175,7 @@ re-run `geninstall -k` with no `-d` and no software.
 **Prompt:**
 
 ```text
-Now the AIX Service Pack from /mnt/7300-04-01. I want to preview it, apply it so that it
+Now the AIX Service Pack from /mnt/<sp_directory>. I want to preview it, apply it so that it
 stays rollback-able, and validate it before I commit. Tell me exactly which command removes
 the ability to roll back.
 ```
@@ -193,9 +188,9 @@ must_not_include: []
 
 **What to observe:**
 
-- `install_all_updates -d /mnt/7300-04-01 -p -Y`: **preview only**.
-- `install_all_updates -d /mnt/7300-04-01 -Y`: applies the updates in the **APPLIED** state,
-  not committed.
+- `install_all_updates -d /mnt/<sp_directory> -p -Y`: **preview only**.
+- `install_all_updates -d /mnt/<sp_directory> -Y`: applies the updates in the **APPLIED**
+  state, not committed.
 - `installp -s` lists the APPLIED software for validation.
 - Rollback before the commit: `installp -r -f <list>`.
 - **The commit (`installp -c all`) removes the rollback.** Bob asks you to confirm first.

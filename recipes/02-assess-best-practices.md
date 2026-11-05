@@ -2,7 +2,7 @@
 
 ## Overview
 
-You will ask Bob to audit an existing Oracle 19c LPAR on AIX in **read-only** mode: CPU and
+You will ask Bob to audit an existing Oracle Database LPAR on AIX in **read-only** mode: CPU and
 SMT, memory and large pages, storage layout and `queue_depth`, OS users and limits, and the
 Oracle environment variables. Bob turns the repository's best practices into a
 PASS / WARN / FAIL table, with the source of every finding. Then you hand a risky change
@@ -11,7 +11,7 @@ script to the **review** mode and see it caught before it runs.
 **Duration**: 30 minutes
 **Difficulty**: Beginner
 **Mode**: 🗄️ Oracle on AIX/Power, then 🔍 AIX/Oracle Review
-**Target**: an AIX 7.3 LPAR running Oracle 19c (single instance or RAC)
+**Target**: an AIX LPAR running Oracle Database (single instance or RAC)
 **Output**: `work/lab02/assessment.md`
 
 > ✅ **Nothing is changed in this lab.** Every command is read-only, and the review mode
@@ -36,10 +36,10 @@ script to the **review** mode and see it caught before it runs.
 **Prompt:**
 
 ```text
-Assess this Oracle 19c LPAR on AIX 7.3 (Power10, IBM Cloud PowerVS) against the best
-practices: CPU and SMT, memory and large pages, storage layout and queue depth, OS users
-and limits, and environment variables. This is read-only: do not change anything. Give
-me the commands grouped by area, and when I paste the output, give me the findings.
+Assess this Oracle Database LPAR on AIX against the best practices: CPU and SMT, memory
+and large pages, storage layout and queue depth, OS users and limits, and environment
+variables. This is read-only: do not change anything. Give me the commands grouped by
+area, and when I paste the output, give me the findings.
 ```
 
 <!-- eval
@@ -54,7 +54,8 @@ the software owner **after** the pre-flight check passes. Paste each output into
 **What to observe:**
 
 - Bob first captures the context (`oslevel -s`, `prtconf`, `lparstat -i`).
-- CPU: `smtctl` (expect SMT8 on Power10) and `schedo -L vpm_throughput_mode`.
+- CPU: `smtctl` (expect the SMT mode that fits your processor generation and workload)
+  and `schedo -L vpm_throughput_mode`.
 - Memory: `vmo -L lgpg_regions`, `vmo -L v_pinshm`, `svmon -G`, and the capabilities of
   the Oracle users with `lsuser -a capabilities oracle,grid`.
 - Storage: `lsmpio -q`, `lspath`, `lsattr -El hdisk4 -a queue_depth -a reserve_policy
@@ -97,10 +98,10 @@ message.
 
 | Area | Check | A PASS looks like |
 |---|---|---|
-| CPU | SMT mode | `smtctl` shows SMT8 on Power10 |
+| CPU | SMT mode | `smtctl` shows the SMT mode that fits the processor generation and workload |
 | Memory | Large pages | SGA of 100 GB or more: 16 MB pages with `v_pinshm=1`. Smaller SGA: default 64 KB pages, `ORACLE_SGA_PGSZ` unset |
 | Storage | LUN counts | 8 DATA, 8 REDO, 2 to 4 FRA, equal sizes per pool |
-| Storage | Flash tiers | Redo and OLTP data on Tier 0 / Tier 1, backups on Tier 3, no mixed tiers per disk group |
+| Storage | Storage tiers | Redo and OLTP data on the highest-performance tiers, backups on a capacity tier, no mixed tiers per disk group |
 | Storage | `queue_depth` | 64 on flash. Higher only when `sqfull` shows it is needed |
 | ASM | `AU_SIZE` | 4 MB or 8 MB |
 | OS | Users | `oracle` and `grid` exist and own their homes |
