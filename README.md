@@ -32,6 +32,12 @@ Built for **IBM Bob**. The skills also work with other agents that read
   rules-<mode>/                     # always-on rules loaded for each mode
   skills/<name>/SKILL.md            # generated pointers to .agents/skills (Bob discovery)
   commands/oracle-aix-setup.md      # /oracle-aix-setup slash command
+recipes/                            # guided demos (R00-R05), also used as evals
+  README.md                         # how to run a demo and the recipe format
+evals/
+  run_evals.py                      # runs every eval (skills + recipes + hallucination cases)
+  recipe_evals.py                   # recipe checks and answer grader (--prompts, --grade)
+  hallucination_cases.yaml          # known wrong AIX command lines and their fixes
 scripts/
   validate.py                       # static checks (run in CI)
   sync_bob_skills.py                # regenerate .bob/skills pointers
@@ -120,7 +126,7 @@ repository.
 4. Run the checks locally before opening a pull request:
 
 ```bash
-pip install pyyaml && python scripts/validate.py
+pip install pyyaml && python scripts/validate.py && python evals/run_evals.py
 ```
 
 ```bash
