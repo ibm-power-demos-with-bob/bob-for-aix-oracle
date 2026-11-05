@@ -35,6 +35,9 @@ canonical file and re-run that script.
 """
 
 
+POINTER_MARKER = "# {name} (Bob pointer skill)"
+
+
 def canonical_skills() -> list[Path]:
     return sorted(p for p in CANONICAL_DIR.glob("*/SKILL.md"))
 
@@ -67,10 +70,13 @@ def main(argv: list[str]) -> int:
             target.write_text(content, encoding="utf-8", newline="\n")
             print(f"updated {target.relative_to(ROOT).as_posix()}")
 
+    # Only generated pointers can be orphans. Standalone Bob skills (for example the
+    # oracle-aix-setup installer) have no canonical skill and are left alone.
     orphans = [
         p.relative_to(ROOT).as_posix()
         for p in BOB_DIR.glob("*/SKILL.md")
         if p.parent.name not in expected_names
+        and POINTER_MARKER.format(name=p.parent.name) in p.read_text(encoding="utf-8")
     ]
     if check:
         for path in stale:
