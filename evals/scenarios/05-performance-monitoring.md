@@ -1,5 +1,5 @@
 ---
-id: R05
+id: S05
 title: Performance triage and monitoring of Oracle on AIX
 mode: oracle-aix
 skills: [aix, oracle-aix]
@@ -39,7 +39,7 @@ must_not_include:
   - '\bdate\s+-d\b'
 ---
 
-# Recipe R05: Performance triage and monitoring
+# Scenario S05: Performance triage and monitoring
 
 **Goal:** a read-only, evidence-first diagnosis ("collect, compare two samples,
 then decide"), followed by a minimal monitoring setup that uses only AIX tools:
@@ -130,7 +130,7 @@ odmget -q"en_name='oradisk_perm'" errnotify          # verify
 an error notification method. Never edit other ODM classes by hand unless IBM Support
 asks for it.
 
-## What this recipe demonstrates
+## What this scenario demonstrates
 
 - Evidence first: Oracle waits, then AIX two-sample comparison.
 - AIX-native flags (`iostat -D`, `mpstat -v`), with the Linux reflexes rejected.

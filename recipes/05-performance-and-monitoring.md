@@ -40,6 +40,12 @@ Users report that the Oracle database on our AIX 7.3 Power10 LPAR has been slow 
 we see it next time. Do not change anything yet. Start with what I should check in Oracle.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["log file parallel write", "db file sequential read", "AWR", "1 ms"]
+must_not_include: ['\bchdev\b', '\bvmo\s+(-p\s+)?-o\b', '\bioo\s+(-p\s+)?-o\b']
+-->
+
 **What to observe:**
 
 - Bob checks the Oracle environment first (pre-flight), and asks which OS user to use.
@@ -68,6 +74,12 @@ directory under /tmp, start a one-hour nmon recording in the background, and the
 the CPU, I/O and error-log commands with two samples to compare.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["perl -MPOSIX", "nmon -f", "lparstat", "iostat -D", "fcstat fcs0", "lsmpio -q", "errpt"]
+must_not_include: ['\bdate\s+(-d|--date)\b']
+-->
+
 **What to observe:**
 
 - A directory like `/tmp/oradiag-<hostname>-<yyyymmddHHMM>`. The timestamp is computed with
@@ -93,6 +105,12 @@ Run the commands and paste the outputs into the chat.
 Run iostat -x 5 to find the slow disk, and mpstat -P ALL 5 to see the busy CPUs.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["iostat -D", "mpstat -s", "mpstat -v"]
+must_not_include: ['\biostat\s+-x\b', '\bmpstat\s+-P\b']
+-->
+
 **What to observe:**
 
 - Bob says that **AIX `iostat` has no `-x`** and gives `iostat -D 5 3` (the extended disk
@@ -117,6 +135,12 @@ Here is the output of the commands (two samples each). Tell me what the problem 
 table with the finding, what it means, and the next step. Look at avgserv and sqfull on
 the redo disks, the fcstat counters, the CPU entitlement, and errpt.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["avgserv", "sqfull", "queue_depth", "num_cmd_elems", "errpt"]
+must_not_include: []
+-->
 
 Paste the outputs, then send. If you do not have a real slowdown, use this lab on a quiet
 system and let Bob explain what each figure would mean.
@@ -147,6 +171,12 @@ topas shows my Oracle process at 25% CPU on a 4-core LPAR. The rest of the LPAR 
 Is the process waiting, or is it using a full CPU?
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["SMT8", "100 / cores", "AWR"]
+must_not_include: []
+-->
+
 **What to observe:**
 
 - Bob explains that under SMT8 a single busy thread can show about **100 / cores** percent
@@ -168,6 +198,12 @@ Propose a minimal monitoring for this LPAR using only AIX tools: a daily nmon re
 permanent hardware disk errors. Show the commands, how to verify each one, and the revert.
 Do not apply anything until I say yes.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["errnotify", "odmadd", "odmget", "odmdelete", "nmon -f -s 60 -c 1440"]
+must_not_include: ['\bsystemctl\b']
+-->
 
 Reply **yes** only after you have read what Bob proposes.
 
@@ -198,6 +234,12 @@ Summarise this session as work/lab05/diagnosis.md: the symptoms, the evidence wi
 commands, the conclusion, what we changed (nothing, except the monitoring), what we did
 not change and why, and the next steps.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["facts", "revert"]
+must_not_include: []
+-->
 
 **What to observe:**
 
@@ -231,4 +273,5 @@ not change and why, and the next steps.
 
 You completed the five labs. To check your LPAR against the rules from the beginning,
 run [Lab 02](02-assess-best-practices.md) again. To test Bob's answers automatically, see
-the [eval recipes](../evals/recipes/README.md).
+[Automated tests](README.md#automated-tests) and the
+[eval scenarios](../evals/scenarios/README.md).

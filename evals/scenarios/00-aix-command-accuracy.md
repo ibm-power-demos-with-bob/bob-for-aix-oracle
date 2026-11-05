@@ -1,5 +1,5 @@
 ---
-id: R00
+id: S00
 title: AIX command accuracy (no Linux hallucinations)
 mode: aix
 skills: [aix]
@@ -24,7 +24,7 @@ must_not_include:
   - '\bdate\s+-d\b'
 ---
 
-# Recipe R00: AIX command accuracy
+# Scenario S00: AIX command accuracy
 
 **Goal:** show that Bob answers with AIX-native commands only, and says "verify"
 instead of inventing a flag. This is the demo for the "hallucinated AIX command
@@ -80,7 +80,7 @@ Expected caveats in the answer:
   AIX 7.3 TL4: `/home/<user>/.profile` stays). Remove the directory by hand, and
   only after checking what it contains.
 
-## What this recipe demonstrates
+## What this scenario demonstrates
 
 - The `aix` skill "AIX vs Linux" table and the always-on rules in
   `.bob/rules-aix/01-core-rules.md`.

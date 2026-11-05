@@ -1,5 +1,5 @@
 ---
-id: R04
+id: S04
 title: Patching AIX, Oracle and Live Kernel Update
 mode: oracle-aix
 skills: [aix, oracle-aix, ansible-aix]
@@ -35,7 +35,7 @@ must_not_include:
   - '\bLD_LIBRARY_PATH\s*='
 ---
 
-# Recipe R04: Patching AIX + Oracle + Live Kernel Update
+# Scenario S04: Patching AIX + Oracle + Live Kernel Update
 
 **Goal:** show that Bob separates three changes (AIX fix, AIX TL/SP, Oracle RU),
 previews each one, keeps a rollback path, and knows what Live Kernel Update
@@ -73,7 +73,7 @@ lsvg -l rootvg | head                                # a rootvg with 3 mirror co
 cat /var/adm/ras/liveupdate/lvupdate.data            # disk stanzas for an HMC-managed LPAR
 ```
 
-Step 1, backup and rollback path (see recipe R03):
+Step 1, backup and rollback path (see Scenario S03):
 
 ```bash
 mksysb -i -e /backup/$(hostname).mksysb
@@ -114,7 +114,7 @@ installp -s                                          # list APPLIED software, va
 
 A TL/SP update changes the kernel and needs a reboot, or a Live Update for the
 kernel part where the fix allows it. Use `alt_disk_copy -B` or the `mksysb` as the
-fallback (recipe R03).
+fallback (Scenario S03).
 
 Step 4, Oracle Release Update (as `oracle`; `opatchauto` as root for Grid):
 
@@ -155,7 +155,7 @@ Role variables (from the collection documentation): `live_kernel_update_hmc_name
 `live_kernel_update_preview_mode` (default `true`). Set `preview_mode: false`
 only after the preview was reviewed. The role needs AIX 7.2 or later.
 
-## What this recipe demonstrates
+## What this scenario demonstrates
 
 - LKU is a kernel-fix tool: libraries and the Oracle RU still need a restart.
 - Preview first, `APPLIED` not committed, one change at a time.

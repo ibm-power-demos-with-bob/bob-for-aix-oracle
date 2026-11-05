@@ -32,15 +32,15 @@ Built for **IBM Bob**. The skills also work with other agents that read
   rules-<mode>/                     # always-on rules loaded for each mode
   skills/<name>/SKILL.md            # generated pointers to .agents/skills (Bob discovery)
   commands/oracle-aix-setup.md      # /oracle-aix-setup slash command
-recipes/                            # step-by-step labs for AIX + Oracle administrators (Lab 01-05)
-  README.md                         # prerequisites, lab list, how a lab works
-  0N-*.md                           # one lab per task, with copy-and-paste prompts
+recipes/                            # step-by-step recipes for AIX + Oracle administrators (01-05), also automated tests
+  README.md                         # prerequisites, recipe list, how a recipe works, how it is tested
+  0N-*.md                           # one recipe per task, with copy-and-paste prompts and <!-- eval --> test blocks
 evals/
-  run_evals.py                      # runs every eval (skills + recipes + labs + hallucination cases)
-  recipe_evals.py                   # recipe/lab checks and answer grader (--prompts, --grade)
+  run_evals.py                      # runs every eval (skills + scenarios + recipes + hallucination cases)
+  scenario_evals.py                 # scenario/recipe checks and answer graders (--prompts, --grade, --recipe-prompts, --grade-recipe)
   hallucination_cases.yaml          # known wrong AIX command lines and their fixes
-  recipes/                          # technical eval recipes (R00-R05) with reference answers
-    README.md                       # eval recipe format and how to grade an answer
+  scenarios/                        # technical eval scenarios (S00-S05) with reference answers
+    README.md                       # scenario format and how to grade an answer
 scripts/
   validate.py                       # static checks (run in CI)
   sync_bob_skills.py                # regenerate .bob/skills pointers
@@ -90,11 +90,12 @@ installed under `.agents/skills/oracle-aix/operations/`.
 
 ## Usage
 
-### Learn with the labs
+### Learn with the recipes
 
-New to Bob on AIX and Oracle? Start with the [labs](recipes/README.md): five guided
+New to Bob on AIX and Oracle? Start with the [recipes](recipes/README.md): five guided
 sessions (assessment, install preparation, backup, patching, performance) with prompts
-you copy and paste into Bob.
+you copy and paste into Bob. Each step of a recipe is also an automated test case: a
+saved Bob answer can be graded with `python evals/scenario_evals.py --grade-recipe 03:2 answer.txt`.
 
 ### IBM Bob
 

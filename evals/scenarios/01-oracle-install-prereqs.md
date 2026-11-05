@@ -1,5 +1,5 @@
 ---
-id: R01
+id: S01
 title: Oracle 19c install preparation on AIX / PowerVS
 mode: oracle-aix
 skills: [oracle-aix]
@@ -36,7 +36,7 @@ must_not_include:
   - '\bmkvg\b.*rhdisk'
 ---
 
-# Recipe R01: Oracle install preparation
+# Scenario S01: Oracle install preparation
 
 **Goal:** a new LPAR ready for `gridSetup.sh` and `runInstaller`, following the
 repository rules: ask for the OS users, verify the environment, 8/8/2-4 LUN
@@ -138,7 +138,7 @@ Required statements in the answer:
   every Oracle command.
 - The installer prerequisite checks and `cluvfy` win over this list.
 
-## What this recipe demonstrates
+## What this scenario demonstrates
 
 - OS user handling: default `oracle` / `grid`, ask when missing, never `root`.
 - Storage rules: 8 data LUNs, 8 redo LUNs, 2 to 4 backup LUNs, flash tiers,

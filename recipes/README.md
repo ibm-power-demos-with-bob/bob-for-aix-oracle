@@ -1,11 +1,13 @@
-# Labs: learn IBM Bob on AIX and Oracle, step by step
+# Recipes: learn IBM Bob on AIX and Oracle, step by step
 
-These labs are written for **AIX and Oracle system administrators**. Each lab is a
-guided session with IBM Bob on a realistic task. You copy a prompt, paste it into the Bob
-chat, look at what Bob does, and move to the next step. No scripting knowledge is needed.
+These recipes are written for **AIX and Oracle system administrators**. Each recipe (a
+"lab") is a guided session with IBM Bob on a realistic task. You copy a prompt, paste it
+into the Bob chat, look at what Bob does, and move to the next step. No scripting
+knowledge is needed.
 
-If you are looking for the technical test cases that grade Bob's answers automatically,
-they are in [`../evals/recipes/`](../evals/recipes/README.md).
+The same files are the support of the automated tests: every step is a test case (see
+[Automated tests](#automated-tests)). The technical scenarios with reference answers are in
+[`../evals/scenarios/`](../evals/scenarios/README.md).
 
 ## The labs
 
@@ -75,11 +77,42 @@ Bob saves its documents and scripts in a `work/` directory of the workspace, for
 `work/lab01/prepare-os.sh`. Review every generated script before you run it on a system.
 The directory is yours: delete it whenever you want to restart a lab.
 
+## Automated tests
+
+Each `## Step N:` section ends its prompt with a hidden `<!-- eval -->` block. A reader
+does not see it, and `evals/scenario_evals.py` reads it:
+
+```text
+<!-- eval
+mode: oracle-aix                  # a slug from .bob/custom_modes.yaml
+must_include: ["mksysb", "..."]   # case-insensitive strings a correct answer contains
+must_not_include: ['\buseradd\b'] # regular expressions a correct answer never matches in code
+-->
+```
+
+`python evals/run_evals.py` (and the CI) checks, for every step of every recipe:
+
+- there is exactly one eval block, with a known Bob mode and valid regular expressions;
+- the prompt just above it is a real task;
+- every `must_include` string is described in the step, so the recipe and its test do not drift;
+- the commands shown in the step do not match its `must_not_include` patterns, nor any case
+  of [`hallucination_cases.yaml`](../evals/hallucination_cases.yaml);
+- the grader accepts a complete answer and rejects an incomplete or Linux-flavoured one.
+
+To grade a real Bob session, save its answer to a file and run:
+
+```bash
+python evals/scenario_evals.py --recipe-prompts                 # list recipe steps, modes and prompts
+python evals/scenario_evals.py --grade-recipe 03:3 answer.txt   # recipe 03, step 3; exit code 1 on failure
+```
+
+When you add or change a step, update its eval block in the same commit.
+
 ## Related material
 
 - Skills: [`aix`](../.agents/skills/aix/SKILL.md),
   [`ansible-aix`](../.agents/skills/ansible-aix/SKILL.md),
   [`oracle-aix`](../.agents/skills/oracle-aix/SKILL.md).
-- Technical eval recipes and answer grader: [`../evals/recipes/`](../evals/recipes/README.md).
+- Technical eval scenarios and answer grader: [`../evals/scenarios/`](../evals/scenarios/README.md).
 - Known wrong command lines that Bob must never produce:
   [`../evals/hallucination_cases.yaml`](../evals/hallucination_cases.yaml).

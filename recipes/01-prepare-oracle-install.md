@@ -44,6 +44,12 @@ entitlement and virtual CPUs, and whether the OS users that will own the softwar
 already exist. Do not create or change anything.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["oslevel -s", "lparstat -i", "oraInst.loc"]
+must_not_include: ['\buseradd\b', '\bmkuser\b', '\bmkgroup\b']
+-->
+
 Run the commands Bob proposes (or let Bob run them) and paste the output back into the
 chat if you ran them yourself.
 
@@ -76,6 +82,12 @@ capabilities CAP_NUMA_ATTACH, CAP_BYPASS_RAC_VMM and CAP_PROPAGATE. End the scri
 the commands that verify the result, and put the commands that undo it in comments at the
 end. Do not run it.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["mkgroup", "mkuser", "chuser", "rmuser -p"]
+must_not_include: ['\buseradd\b', '\bgroupadd\b', '\busermod\b']
+-->
 
 **What to observe:**
 
@@ -112,6 +124,12 @@ ncargs. Show me the check commands first, and only then the commands that fix wh
 missing, each with the command that reverts it. Do not run the fixing commands.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["lslpp -l", "lsdev -Cc iocp", "lsattr -El sys0", "chdev -l sys0 -a maxuproc=16384", "installp -p"]
+must_not_include: ['\bsysctl\b']
+-->
+
 **What to observe:**
 
 - Bob checks with `lslpp -l` (filesets such as `bos.adt.base` and `bos.perf.libperfstat`),
@@ -134,6 +152,12 @@ the next step.
 ```text
 Give me the shmmax and semmsl values to put in /etc/sysctl.conf for a 64 GB SGA.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["v_pinshm", "vmo -L"]
+must_not_include: ['\bsysctl\s+-w\b', '\bshmmax\s*=']
+-->
 
 **What to observe:**
 
@@ -164,6 +188,12 @@ DATA, REDO and FRA: number of LUNs, size of each LUN, PowerVS tier, and the IOPS
 from the DATA group on Tier 1. Explain each choice in one sentence.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["DATA", "REDO", "FRA", "Tier 3"]
+must_not_include: []
+-->
+
 **What to observe:**
 
 - `DATA`: **8 equal-size LUNs** (or a multiple of 8), here 8 x 100 GB, on Tier 1 (or
@@ -193,6 +223,12 @@ commands that revert the attribute changes. Then write the CREATE DISKGROUP stat
 a DATA disk group over hdisk10 to hdisk17 with a 4 MB allocation unit. Do not run
 anything.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["lspv", "chdev -l hdisk10", "chown grid:asmadmin", "au_size"]
+must_not_include: ['^\s*(mkvg|extendvg)\b']
+-->
 
 **What to observe:**
 
@@ -228,6 +264,12 @@ patches are under /stage/patches/<GI_RU_patch_number> and
 /stage/patches/<DB_RU_patch_number>. Response files are /stage/grid_install.rsp and
 /stage/db_install.rsp.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["mksysb", "-applyRU", "gridSetup.sh", "runInstaller", "LIBPATH"]
+must_not_include: ['export\s+LD_LIBRARY_PATH']
+-->
 
 Replace `<GI_RU_patch_number>` and `<DB_RU_patch_number>` with the numbers of the Grid
 Infrastructure and Database Release Updates you downloaded from My Oracle Support.

@@ -1,5 +1,5 @@
 ---
-id: R03
+id: S03
 title: Backup of AIX (mksysb, alt_disk) and Oracle (RMAN, home)
 mode: oracle-aix
 skills: [aix, oracle-aix, ansible-aix]
@@ -30,7 +30,7 @@ must_not_include:
   - '\bLD_LIBRARY_PATH\s*='
 ---
 
-# Recipe R03: Backup
+# Scenario S03: Backup
 
 **Goal:** a layered backup that covers the three things a maintenance window can
 break: the AIX image, the Oracle software, and the data. Each layer has a
@@ -127,7 +127,7 @@ Statements the answer must include:
   tags: [backup]
 ```
 
-## What this recipe demonstrates
+## What this scenario demonstrates
 
 - Layered backup with verification (`lsmksysb`, `opatch lspatches`, RMAN).
 - The `alt_disk_copy -B` trap and its check.

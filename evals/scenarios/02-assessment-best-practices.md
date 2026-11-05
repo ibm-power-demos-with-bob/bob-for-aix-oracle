@@ -1,5 +1,5 @@
 ---
-id: R02
+id: S02
 title: Assessment and best-practices review of an Oracle on AIX LPAR
 mode: oracle-aix
 skills: [oracle-aix]
@@ -36,7 +36,7 @@ must_not_include:
   - '\bsysctl\b'
 ---
 
-# Recipe R02: Assessment against best practices
+# Scenario S02: Assessment against best practices
 
 **Goal:** a read-only health check that turns the repository's rules into a
 PASS / WARN / FAIL table. The same checks can be handed to the
@@ -108,7 +108,7 @@ Findings table the answer must produce:
 Every FAIL row comes with the **change, its revert, and the safety note**, but
 the assessment itself changes nothing.
 
-## What this recipe demonstrates
+## What this scenario demonstrates
 
 - A reusable read-only audit built from the companion files, with sources.
 - The review mode catching an unsafe `chdev` before it runs.

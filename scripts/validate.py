@@ -8,7 +8,7 @@ Checks:
     a non-empty `description`. Companion files carry no frontmatter (they are not skills).
   * The .bob/skills pointer skills are in sync (scripts/sync_bob_skills.py --check).
   * Relative Markdown links and companion-file references (best-practices/*.md, ...) resolve
-    (skills, .bob, recipes/ and evals/recipes/).
+    (skills, .bob, recipes/ and evals/scenarios/).
   * Every `ibm.power_aix.<name>` reference is a real module or role of the collection.
   * Shell code blocks contain no Linux/GNU-only commands (date -d, pgrep, systemctl, ...).
   * Ansible example playbooks are valid YAML.
@@ -157,7 +157,7 @@ def check_bob_pointers() -> None:
 
 def check_references_and_code() -> None:
     files = (skill_files() + sorted(BOB.rglob("*.md")) + sorted((ROOT / "recipes").glob("*.md"))
-             + sorted((ROOT / "evals" / "recipes").glob("*.md")))
+             + sorted((ROOT / "evals" / "scenarios").glob("*.md")))
     for path in files:
         text = path.read_text(encoding="utf-8")
         skill_root = next((p for p in [path.parent, *path.parents] if (p / "SKILL.md").exists()

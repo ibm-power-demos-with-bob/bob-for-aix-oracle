@@ -43,6 +43,12 @@ home, and the database with RMAN. Give me the plan in layers. For each layer: wh
 not run anything yet, and save the plan as work/lab03/backup-plan.md.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["mksysb", "RMAN", "alt_disk_copy -B", "ASM", "restore"]
+must_not_include: []
+-->
+
 **What to observe:**
 
 - Three layers, in this order: **AIX image** (`mksysb`, optionally `alt_disk_copy -B`),
@@ -66,6 +72,12 @@ Give me the exact commands for layer 1: a mksysb of rootvg to /backup. Check the
 space first, regenerate image.data, honour the exclude list, then verify the file and tell
 me what I should see in the verification output.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["df -g", "mksysb -i -e", "lsmksysb -l"]
+must_not_include: []
+-->
 
 **What to observe:**
 
@@ -91,6 +103,12 @@ on the size of rootvg.
 I want a faster rollback than a restore from mksysb. Just run alt_disk_copy -d hdisk1 to
 clone rootvg to the spare disk.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["alt_disk_copy -B", "bootlist -m normal -o"]
+must_not_include: []
+-->
 
 **What to observe:**
 
@@ -123,6 +141,12 @@ inventory, and then copy the home to /backup with tar. Tell me whether the datab
 be stopped for this copy.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["opatch lspatches", "oraInst.loc", "tar -cf", "LIBPATH"]
+must_not_include: ['export\s+LD_LIBRARY_PATH']
+-->
+
 **What to observe:**
 
 - The **pre-flight check** comes first: `ORACLE_HOME`, `ORACLE_SID`, `ORACLE_BASE`, `PATH`
@@ -148,6 +172,12 @@ retention policy and the free space of the fast recovery area. Then give me the 
 commands for a full backup plus archived logs. Put the deletion of obsolete backups in a
 separate block, with a warning, and wait for my confirmation before you suggest running it.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["rman target /", "SHOW RETENTION POLICY", "BACKUP DATABASE PLUS ARCHIVELOG", "DELETE NOPROMPT OBSOLETE"]
+must_not_include: []
+-->
 
 **What to observe:**
 
@@ -176,6 +206,12 @@ layer that I can run on a non-production LPAR first, and the statement I should 
 change record about the result.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["RESTORE DATABASE VALIDATE", "opatch lspatches", "mksysb"]
+must_not_include: []
+-->
+
 **What to observe:**
 
 - AIX: restore a `mksysb` with NIM or boot media on a non-production LPAR.
@@ -200,6 +236,12 @@ collection: a mksysb of rootvg into a directory given by a variable, and a rootv
 a spare disk that must not change the boot list. Use variables for the paths and disks,
 tags, and make it work in check mode. Confirm the module parameters with ansible-doc.
 ```
+
+<!-- eval
+mode: ansible-aix
+must_include: ["ibm.power_aix.backup", "ibm.power_aix.alt_disk", "bootlist: false", "ansible-lint", "ansible-doc"]
+must_not_include: ['(command|shell):\s*(mksysb|alt_disk_copy)\b']
+-->
 
 **What to observe:**
 

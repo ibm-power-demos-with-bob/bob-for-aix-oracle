@@ -3,7 +3,7 @@
 # Each case is a command an LLM (or a Linux administrator) tends to produce on AIX.
 #   wrong:   regex matched against ONE line of executable code (fenced bash/sh/ksh/sql blocks)
 #   example: a literal bad line; the evals prove that the regex matches it
-#   fix:     the AIX-native replacement (a literal that must appear in a skill or recipe)
+#   fix:     the AIX-native replacement (a literal that must appear in a skill, scenario or recipe)
 #   why:     one line of explanation
 #   source:  where the correct form is documented (repository file or IBM documentation)
 #
@@ -11,7 +11,7 @@
 # "wrong" because it looks suspicious: check the IBM documentation first (for example,
 # `swapon` does exist on AIX, so it is deliberately not listed here).
 #
-# evals/recipe_evals.py checks that the regex matches its example, that the fix is
+# evals/scenario_evals.py checks that the regex matches its example, that the fix is
 # documented in the skills, that no skill or recipe contains the wrong form, and that the
 # answer grader rejects each wrong form.
 

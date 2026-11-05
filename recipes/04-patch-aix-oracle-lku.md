@@ -41,6 +41,12 @@ Update? Give me the sequence, the checks, and the rollback for each change. Do n
 anything.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["kernel", "restart", "preview", "rollback"]
+must_not_include: []
+-->
+
 **What to observe:**
 
 - Bob answers **"yes, if..."**. LKU is for **kernel and kernel-extension** interim fixes.
@@ -64,6 +70,12 @@ Update: AIX level, installed fixes, filesystem consistency, Active Memory Sharin
 number of free disks, paths, the rootvg mirror, and the Live Update data file. Tell me how
 to read each result and what blocks the update.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["oslevel -s", "emgr -l", "lppchk -v", "lparstat -i", "lspath", "allowRemoteRestart", "geninstall -k -p"]
+must_not_include: ['geninstall\s+-k\s*$']
+-->
 
 **What to observe:**
 
@@ -102,6 +114,12 @@ me the plan with a planned reboot instead: how to preview the fix, apply it, and
 rollback is. The rollback must be a clone of rootvg that does not change the boot list.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["alt_disk_copy -B", "bootlist -m normal -o", "emgr -p -e", "mksysb"]
+must_not_include: []
+-->
+
 **What to observe:**
 
 - Bob accepts that LKU is out and builds a **planned reboot** plan.
@@ -126,6 +144,12 @@ preview, the Live Update preview with the blackout time estimate, the real run, 
 to find the processes still using old libraries afterwards. Mark the command that I must
 confirm before running.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["hmcauth", "emgr -p -e", "geninstall -k -p", "geninstall -k -d", "genld -u"]
+must_not_include: []
+-->
 
 **What to observe:**
 
@@ -161,6 +185,12 @@ stays rollback-able, and validate it before I commit. Tell me exactly which comm
 the ability to roll back.
 ```
 
+<!-- eval
+mode: oracle-aix
+must_include: ["install_all_updates -d", "-p -Y", "installp -s", "installp -r -f", "installp -c all"]
+must_not_include: []
+-->
+
 **What to observe:**
 
 - `install_all_updates -d /mnt/7300-04-01 -p -Y`: **preview only**.
@@ -186,6 +216,12 @@ environment check for the home being patched. Then: record the patch level, the 
 and space prerequisite checks, the cleanup of AIX shared libraries, the check that no
 process still uses the home, the apply, datapatch, and the rollback commands.
 ```
+
+<!-- eval
+mode: oracle-aix
+must_include: ["opatch lspatches", "CheckConflictAgainstOHWithDetail", "slibclean", "genld -l", "datapatch -verbose", "opatch rollback"]
+must_not_include: ['export\s+LD_LIBRARY_PATH']
+-->
 
 **What to observe:**
 
@@ -217,6 +253,12 @@ Rank the findings by severity. Check that each change has a preview, a backup, a
 and a verification, that the AIX and Oracle changes are separate, and that nothing
 destructive runs without a confirmation. Mark anything you cannot verify as "verify".
 ```
+
+<!-- eval
+mode: aix-review
+must_include: ["severity", "preview", "rollback", "HIGH"]
+must_not_include: []
+-->
 
 Make sure the plan exists first. If you did not save one, switch back to the Oracle mode
 and ask: *"Save the sequence of this lab as work/lab04/patch-plan.md."*

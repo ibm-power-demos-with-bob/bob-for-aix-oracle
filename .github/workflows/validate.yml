@@ -20,7 +20,7 @@ jobs:
       - run: pip install pyyaml
       - name: Static checks (frontmatter, links, Bob modes, module names, Linux-isms)
         run: python scripts/validate.py
-      - name: Evals (skills, recipes, hallucination cases)
+      - name: Evals (skills, scenarios, recipes, hallucination cases)
         run: python evals/run_evals.py
 
   ansible-examples:
