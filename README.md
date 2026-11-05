@@ -1,6 +1,6 @@
 # bob-for-aix-oracle
 
-**Quick install (global):** paste this into your AI agent (IBM Bob, Claude Code, Cursor, Copilot, …):
+**Quick install (global):** paste this into your IBM Bob:
 
 ```text
 Install the skills in .agents/skills/ from https://github.com/ibm-power-demos-with-bob/bob-for-aix-oracle globally for yourself (your user-level skills directory), then run the .bob/commands/oracle-aix-setup.md workflow to clone and install the Oracle skills.
