@@ -235,6 +235,36 @@ emgr -e IJ12345s1a.epkg.Z        # install an iFix;  emgr -r -L <label> to remov
 Leave updates APPLIED (not committed) until they are validated, so you can reject
 them. Remove iFixes that a TL/SP replaces before updating.
 
+### Live Update (Live Kernel Update, LKU)
+
+Live Update loads kernel-level interim fixes without a reboot. It is **not** a
+stand-alone command: start it with `geninstall -k` (or from NIM). Inputs come from
+`/var/adm/ras/liveupdate/lvupdate.data`; the template with every field is
+`/var/adm/ras/liveupdate/lvupdate.template`.
+
+```bash
+hmcauth -u hscroot -a <hmc_name>                      # HMC-managed LPAR (PowerVC: pvcauth -u root -a <powervc_host>)
+geninstall -k -p -d /tmp IZ12345.140806.epkg.Z        # PREVIEW first: estimates blackout time and resources
+geninstall -k -d /tmp IZ12345.140806.epkg.Z           # install the iFix and Live Update
+geninstall -k                                         # re-run after a failure once the cause is fixed
+                                                      # (updates are already installed: pass no -d or software)
+genld -u                                              # processes still using old libraries (AIX 7.2 TL1+): restart them
+```
+
+- It is meant for iFixes with kernel or kernel-extension changes. A fixed shared
+  library on disk is **not** picked up by running processes: restart them.
+- Needs at least 2 extra disks (surrogate `lvup_rootvg` and a rootvg mirror), all I/O
+  virtualized through VIOS, and at least 2 paths to every disk. After an iFix-only
+  Live Update the mirror is kept as `old_rootvg` and can be booted to go back. If
+  updates were applied, take a rootvg backup first.
+- Not supported, among others: Active Memory Sharing, remote restart, Advanced
+  Accounting, multibos, a process that locked memory with `plock()` or holds
+  `/dev/kmem`, exclusive resource sets, and a rootvg that already has 3 mirror copies.
+  Check the full list in the IBM documentation "Live Update restrictions".
+- `geninstall -k` does not update RPM packages: update them before the operation.
+- Logs: `/var/adm/ras/liveupdate/logs`. For IBM Support: `snap -U`.
+- Ansible: the `ibm.power_aix.live_kernel_update` role (see the `ansible-aix` skill).
+
 ---
 
 ## Backup, Boot and Alternate Disk
@@ -242,7 +272,10 @@ them. Remove iFixes that a TL/SP replaces before updating.
 ```bash
 mksysb -i -e /backup/$(hostname).mksysb   # rootvg backup (-e honours /etc/exclude.rootvg)
 savevg -i -f /backup/datavg.savevg datavg # non-rootvg VG backup
-alt_disk_copy -d hdisk1                   # clone rootvg before an update (fallback boot)
+lsmksysb -l -f /backup/$(hostname).mksysb # verify an image: VG, date, oslevel, LV/FS list (-L: filesets)
+alt_disk_copy -B -d hdisk1                # clone rootvg before an update (fallback boot). -B keeps the
+                                          # bootlist on the current rootvg; without it the bootlist is
+                                          # set to the clone, so a reboot would start the OLD copy
 bootlist -m normal -o                     # show the boot list
 bootlist -m normal hdisk0 hdisk1          # set the boot list
 bosboot -ad /dev/ipldevice                # rebuild the boot image on the boot disk
