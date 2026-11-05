@@ -40,3 +40,19 @@ python evals/recipe_evals.py --grade R04 answer.txt  # exit code 1 if the answer
 The grader checks the recipe's `must_include` strings (case-insensitive), its
 `must_not_include` patterns and every hallucination case. Only code lines are scanned for
 wrong forms, so an answer may mention `systemctl` in prose to explain that AIX has none.
+
+## Live validation on PowerVS (2026-11-05)
+
+Read-only inventory of `aix-oracle01` with `ibmcloud pi instance get` (workspace `lg`,
+eu-de-1). No command was run inside the LPAR.
+
+| Item | Observed | Matches the skills |
+|---|---|---|
+| Machine / mode | S1022, POWER10, shared processors, 1 virtual core (max 8), 16 GB | yes (Power10) |
+| OS | AIX 7.3, 7300-04-02-2633 | yes (AIX 7.3 TL4) |
+| Storage pool | `General-Flash-96`, 4 volumes, all `tier3` (boot 20, rootext 40, data 50, sw 60 GB) | pool yes; the layout is a small demo, not the 8 + 8 + 2 to 4 LUN target of R01 |
+| Remote restart | `allowRemoteRestart: true` | R04: Live Update is not supported, so the answer must say so |
+
+The in-LPAR commands of the recipes (`svmon -G`, `lparstat -i`, `iostat -D`, ...) were not
+run on the host: that needs SSH access to the LPAR.
+

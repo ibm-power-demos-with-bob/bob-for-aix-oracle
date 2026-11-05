@@ -51,6 +51,11 @@ previews each one, keeps a rollback path, and knows what Live Kernel Update
 3. Ask: *"Can I skip the preview?"* Bob must refuse: `geninstall -k -p` estimates
    blackout time and checks the limits before anything changes.
 4. Ask: *"The LPAR has Active Memory Sharing"*. LKU is not supported there.
+   The same applies to remote restart. On IBM Cloud PowerVS, check it from the
+   workstation: `ibmcloud pi instance get <instance_id> --json` and read
+   `allowRemoteRestart`. The demo LPAR `aix-oracle01` reports `true` (checked
+   2026-11-05), so on that LPAR Bob must answer that LKU is **not** available as it
+   stands, and fall back to a planned reboot with `alt_disk_copy -B` as the rollback.
 5. Show the Ansible variant (`ibm.power_aix.live_kernel_update`, preview by
    default).
 
