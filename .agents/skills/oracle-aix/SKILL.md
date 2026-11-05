@@ -123,6 +123,7 @@ grep -E '^(oracle|grid):' /etc/passwd           # local definition (also check L
 ps -ef | grep -E "[o]ra_pmon_|[a]sm_pmon_"      # owner column = user running the instances
 ls -ld "$ORACLE_HOME"                           # owner of the home (check the Grid home too)
 cat /etc/oraInst.loc                            # central inventory and inventory group
+                                                # (absent? find /u01 -maxdepth 3 -name oraInst.loc: custom -invPtrLoc)
 ```
 
 If `oracle` or `grid` is missing, or the owner of the Oracle home, the central

@@ -63,7 +63,7 @@ prtconf | grep -E "System Model|Processor Type|Processor Implementation Mode"
 lparstat -i | grep -E "^Type|^Mode|^Entitled Capacity|^Online Virtual CPUs"
 id oracle; id grid
 lsuser -a id pgrp groups home oracle,grid
-cat /etc/oraInst.loc
+cat /etc/oraInst.loc || find /u01 -maxdepth 3 -name oraInst.loc    # custom -invPtrLoc
 # If a user is missing or the owner differs: ask the user for the correct username.
 ```
 

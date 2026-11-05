@@ -68,6 +68,8 @@ lsuser -a id pgrp groups home oracle,grid
 grep -E '^(oracle|grid):' /etc/passwd      # also check LDAP/NIS if used
 ls -ld "$ORACLE_HOME"                      # owner of the home; check the Grid home too
 cat /etc/oraInst.loc                       # central inventory location and group
+# Not found? The installer may have used -invPtrLoc: look for the pointer next to the
+# inventory, e.g. find /u01 -maxdepth 3 -name oraInst.loc
 ```
 
 If `oracle` or `grid` does not exist, or the actual owner of the Oracle home, the

@@ -57,9 +57,11 @@ Inventory of `aix-oracle01` (AIX 7.3 TL4 SP2, POWER10, S1022) with `ibmcloud pi 
 
 Commands confirmed on the host: `svmon -G`, `vmstat -v`, `lsps -a`, `lssrc -s sshd`, `lsmpio`,
 `lsmpio -q`, `lspath -F "name parent"`, `genld -u`, `smtctl`, `vmo -L lgpg_regions`,
-`vmo -L v_pinshm`, `ioo -a`, `iostat -D`, `mpstat -s`, `lparstat -i`, `emgr -l`, `installp -s`,
-`lppchk -v`. The `perl -MPOSIX` timestamp for `errpt -s` runs. Confirmed as wrong on AIX:
-`date -d`, `free`, `iostat -x`, `mpstat -P`.
+`vmo -L v_pinshm`, `schedo -L vpm_throughput_mode`, `ioo -a`, `iostat -D`, `mpstat -s`,
+`mpstat -v`, `lparstat`, `lparstat -i`, `vmstat`, `fcstat fcs0`, `lsattr -El hdisk2 -a queue_depth`,
+`emgr -l`, `installp -s`, `lppchk -v`, `lsmksysb`, `odmget errnotify` (the stanza fields of
+R05 exist), `nmon -m <dir>`. The `perl -MPOSIX` timestamp for `errpt -s` is accepted by `errpt`.
+Confirmed as wrong on AIX: `date -d`, `free`, `iostat -x`, `mpstat -P`.
 
 Findings fixed in the repository:
 
@@ -68,6 +70,11 @@ Findings fixed in the repository:
 - A bare `geninstall -k` is not a usage query: it starts the Live Update verification (and
   wrote `/var/adm/ras/liveupdate/lvupdate.data` on this LPAR). The `aix` skill now says so.
 - Remote restart is not reported by `lparstat -i`; R04 now says where to read it.
+- `/etc/oraInst.loc` does not exist here: the inventory pointer is `/u01/oraInventory/oraInst.loc`
+  (installer run with `-invPtrLoc`). The skills and recipes now fall back to
+  `find /u01 -maxdepth 3 -name oraInst.loc`.
+- R03 uses `/backup`, which does not exist on this LPAR (`/u01` 50 GB, `orafsvg` has about
+  10 GB free): the recipe's `df -g` check must come first. This is expected for a generic recipe.
 
 Not run on the host, because they change the system: `stopsrc`, `mkuser`, `mksysb`,
 `alt_disk_copy`, `geninstall -k -d`, `opatch`, tunable changes.

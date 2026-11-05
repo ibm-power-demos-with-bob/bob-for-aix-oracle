@@ -70,7 +70,7 @@ Layer 2, Oracle software (as `oracle`; `grid` for the Grid home):
 ```bash
 # Purpose: file-level copy of the home and inventory, taken with the home stopped.
 : "${ORACLE_HOME:?ORACLE_HOME is not set}"
-cat /etc/oraInst.loc                             # inventory location
+cat /etc/oraInst.loc || find /u01 -maxdepth 3 -name oraInst.loc   # inventory location (custom -invPtrLoc)
 $ORACLE_HOME/OPatch/opatch lspatches             # record the current patch level
 df -g /backup
 tar -cf /backup/oracle_home_$(hostname).tar "$ORACLE_HOME"
