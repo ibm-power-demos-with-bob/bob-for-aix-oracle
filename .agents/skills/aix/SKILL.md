@@ -248,6 +248,8 @@ geninstall -k -p -d /tmp IZ12345.140806.epkg.Z        # PREVIEW first: estimates
 geninstall -k -d /tmp IZ12345.140806.epkg.Z           # install the iFix and Live Update
 geninstall -k                                         # re-run after a failure once the cause is fixed
                                                       # (updates are already installed: pass no -d or software)
+                                                      # NEVER run it bare to display usage: it starts the
+                                                      # Live Update verification
 genld -u                                              # processes still using old libraries (AIX 7.2 TL1+): restart them
 ```
 
@@ -263,6 +265,9 @@ genld -u                                              # processes still using ol
   Check the full list in the IBM documentation "Live Update restrictions".
 - `geninstall -k` does not update RPM packages: update them before the operation.
 - Logs: `/var/adm/ras/liveupdate/logs`. For IBM Support: `snap -U`.
+- Observed on AIX 7.3 TL4 SP2: a bare `geninstall -k` prints `Pre-Live Update Verification...`
+  and creates `/var/adm/ras/liveupdate/lvupdate.data`. Use the documented preview
+  (`geninstall -k -p -d <dir> <ifix>`) and ask the user before any `geninstall -k`.
 - Ansible: the `ibm.power_aix.live_kernel_update` role (see the `ansible-aix` skill).
 
 ---

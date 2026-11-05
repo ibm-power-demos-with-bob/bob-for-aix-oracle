@@ -62,7 +62,7 @@ oslevel -s
 prtconf | grep -E "System Model|Processor Type|Processor Implementation Mode"
 lparstat -i | grep -E "^Type|^Mode|^Entitled Capacity|^Online Virtual CPUs"
 id oracle; id grid
-lsuser -a id pgrp groups home oracle grid
+lsuser -a id pgrp groups home oracle,grid
 cat /etc/oraInst.loc
 # If a user is missing or the owner differs: ask the user for the correct username.
 ```
@@ -90,7 +90,7 @@ mkuser id=54321 pgrp=oinstall groups=oinstall,dba,asmdba home=/home/oracle shell
 mkuser id=54331 pgrp=oinstall groups=oinstall,asmadmin,asmdba,dba home=/home/grid shell=/usr/bin/ksh grid
 chuser capabilities=CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE oracle
 chuser capabilities=CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE grid
-lsuser -a capabilities oracle grid
+lsuser -a capabilities oracle,grid
 ```
 
 Step 2, storage layout (checklist from `io-storage.md` §7):

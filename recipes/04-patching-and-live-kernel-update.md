@@ -65,7 +65,8 @@ Step 0, prerequisites and eligibility (read-only, as root):
 
 ```bash
 oslevel -s; emgr -l; lppchk -v
-lparstat -i | grep -E "^Type|^Mode|Memory Mode"      # AMS and remote restart: LKU not supported
+lparstat -i | grep -E "^Type|^Mode|Memory Mode"      # Memory Mode "Shared" = AMS: LKU not supported
+# Remote restart is not shown by lparstat: read it from the HMC, or from PowerVS (allowRemoteRestart)
 lspv                                                 # at least 2 free disks (surrogate rootvg + mirror)
 lspath                                               # at least 2 paths per disk, all I/O through VIOS
 lsvg -l rootvg | head                                # a rootvg with 3 mirror copies blocks LKU

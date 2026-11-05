@@ -64,7 +64,7 @@ tasks. `grid` owns Grid Infrastructure and runs ASM, RAC and Clusterware tasks. 
 
 ```bash
 id oracle; id grid                         # both must exist on a RAC / Grid node
-lsuser -a id pgrp groups home oracle grid
+lsuser -a id pgrp groups home oracle,grid
 grep -E '^(oracle|grid):' /etc/passwd      # also check LDAP/NIS if used
 ls -ld "$ORACLE_HOME"                      # owner of the home; check the Grid home too
 cat /etc/oraInst.loc                       # central inventory location and group
@@ -88,7 +88,7 @@ mkuser id=54331 pgrp=oinstall groups=oinstall,asmadmin,asmdba,dba home=/home/gri
 # Capabilities required by Oracle and Grid processes
 chuser capabilities=CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE oracle
 chuser capabilities=CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE grid
-lsuser -a capabilities oracle grid
+lsuser -a capabilities oracle,grid
 ```
 
 | Capability | Purpose |

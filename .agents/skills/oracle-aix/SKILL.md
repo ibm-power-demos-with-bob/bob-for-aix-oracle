@@ -118,7 +118,7 @@ such as `chdev`/`chown` on hdisks). Never use `root` to run database or ASM tool
 ```bash
 # Purpose: confirm the Oracle software owners before any Oracle task
 id oracle; id grid                              # both must exist on a RAC / Grid node
-lsuser -a id pgrp groups home oracle grid       # AIX user attributes
+lsuser -a id pgrp groups home oracle,grid       # AIX user attributes
 grep -E '^(oracle|grid):' /etc/passwd           # local definition (also check LDAP/NIS if used)
 ps -ef | grep -E "[o]ra_pmon_|[a]sm_pmon_"      # owner column = user running the instances
 ls -ld "$ORACLE_HOME"                           # owner of the home (check the Grid home too)

@@ -280,7 +280,7 @@ vmo -r -o lgpg_regions=<calculated_count> -o lgpg_size=16777216
 vmo -p -o v_pinshm=1
 
 # Step 3: the oracle and grid owners need CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE
-#         (see os-prereqs.md §4):  lsuser -a capabilities oracle grid
+#         (see os-prereqs.md §4):  lsuser -a capabilities oracle,grid
 
 # Step 4: rebuild the boot image and reboot (required because -r was used)
 bosboot -a

@@ -71,7 +71,7 @@ schedo -L vpm_throughput_mode
 vmo -L lgpg_regions
 vmo -L v_pinshm            # must be 1 only when 16 MB pages are in use
 svmon -G                   # 16 MB row: PoolSize vs inuse
-lsuser -a capabilities oracle grid    # CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE
+lsuser -a capabilities oracle,grid    # CAP_NUMA_ATTACH,CAP_BYPASS_RAC_VMM,CAP_PROPAGATE
 
 # 4. Storage layout (io-storage.md §7)
 lsmpio -q                  # LUN count and size per pool: 8 DATA, 8 REDO, 2 to 4 FRA, equal sizes
@@ -84,7 +84,7 @@ fcstat fcs0 | grep -E "No Command Resource Count|No DMA Resource Count"
 id oracle; id grid
 lsdev -Cc iocp
 lsattr -El sys0 -a maxuproc -a ncargs
-lsuser -a fsize data stack rss nofiles cpu oracle grid
+lsuser -a fsize data stack rss nofiles cpu oracle,grid
 
 # 6. Environment: use the Oracle pre-flight check from SKILL.md, then
 env | grep -E '^(LIBPATH|LD_LIBRARY_PATH)='   # LIBPATH must hold $ORACLE_HOME/lib; LD_LIBRARY_PATH must be absent

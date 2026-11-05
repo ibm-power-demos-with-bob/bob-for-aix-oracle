@@ -43,16 +43,32 @@ wrong forms, so an answer may mention `systemctl` in prose to explain that AIX h
 
 ## Live validation on PowerVS (2026-11-05)
 
-Read-only inventory of `aix-oracle01` with `ibmcloud pi instance get` (workspace `lg`,
-eu-de-1). No command was run inside the LPAR.
+Inventory of `aix-oracle01` (AIX 7.3 TL4 SP2, POWER10, S1022) with `ibmcloud pi instance get`
+(workspace `lg`, eu-de-1), then the read-only commands of the recipes over SSH.
 
 | Item | Observed | Matches the skills |
 |---|---|---|
-| Machine / mode | S1022, POWER10, shared processors, 1 virtual core (max 8), 16 GB | yes (Power10) |
-| OS | AIX 7.3, 7300-04-02-2633 | yes (AIX 7.3 TL4) |
-| Storage pool | `General-Flash-96`, 4 volumes, all `tier3` (boot 20, rootext 40, data 50, sw 60 GB) | pool yes; the layout is a small demo, not the 8 + 8 + 2 to 4 LUN target of R01 |
-| Remote restart | `allowRemoteRestart: true` | R04: Live Update is not supported, so the answer must say so |
+| Machine / mode | POWER10, `Shared-SMT-8`, Uncapped, entitlement 1.0, 1 virtual CPU (max 8), 16 GB, Memory Mode Dedicated | yes |
+| OS | AIX 7.3, 7300-04-02-2633 | yes |
+| Storage pool | `General-Flash-96`, 4 volumes, all `tier3`; 3 VGs (`rootvg`, `orafsvg`, `oradatavg`) | pool yes; a small demo layout, not the 8 + 8 + 2 to 4 LUN target of R01 |
+| Remote restart | `allowRemoteRestart: true` (PowerVS) | R04: Live Update is not supported on this LPAR |
+| Disks | `no_reserve`, `queue_depth 32`, 2 to 4 MPIO paths per disk, `iocp0` Available | `queue_depth` is below the 64 to 256 advised in `io-storage.md` |
+| Oracle | `ora_pmon_orcl` and a listener run as `oracle` from `/u01/19c/database/home`; user `grid` does not exist | consistent with a single-instance, non-RAC install |
 
-The in-LPAR commands of the recipes (`svmon -G`, `lparstat -i`, `iostat -D`, ...) were not
-run on the host: that needs SSH access to the LPAR.
+Commands confirmed on the host: `svmon -G`, `vmstat -v`, `lsps -a`, `lssrc -s sshd`, `lsmpio`,
+`lsmpio -q`, `lspath -F "name parent"`, `genld -u`, `smtctl`, `vmo -L lgpg_regions`,
+`vmo -L v_pinshm`, `ioo -a`, `iostat -D`, `mpstat -s`, `lparstat -i`, `emgr -l`, `installp -s`,
+`lppchk -v`. The `perl -MPOSIX` timestamp for `errpt -s` runs. Confirmed as wrong on AIX:
+`date -d`, `free`, `iostat -x`, `mpstat -P`.
+
+Findings fixed in the repository:
+
+- `lsuser -a <attrs> oracle grid` fails ("Usage: lsuser"): AIX `lsuser` takes ONE comma-separated
+  list (`oracle,grid`). Corrected in the skills and recipes.
+- A bare `geninstall -k` is not a usage query: it starts the Live Update verification (and
+  wrote `/var/adm/ras/liveupdate/lvupdate.data` on this LPAR). The `aix` skill now says so.
+- Remote restart is not reported by `lparstat -i`; R04 now says where to read it.
+
+Not run on the host, because they change the system: `stopsrc`, `mkuser`, `mksysb`,
+`alt_disk_copy`, `geninstall -k -d`, `opatch`, tunable changes.
 
