@@ -1,0 +1,177 @@
+# Known wrong AIX command lines and their replacements.
+#
+# Each case is a command an LLM (or a Linux administrator) tends to produce on AIX.
+#   wrong:   regex matched against ONE line of executable code (fenced bash/sh/ksh/sql blocks)
+#   example: a literal bad line; the evals prove that the regex matches it
+#   fix:     the AIX-native replacement (a literal that must appear in a skill or recipe)
+#   why:     one line of explanation
+#   source:  where the correct form is documented (repository file or IBM documentation)
+#
+# Only add a case when the correct form is documented. Never record a command as
+# "wrong" because it looks suspicious: check the IBM documentation first (for example,
+# `swapon` does exist on AIX, so it is deliberately not listed here).
+#
+# evals/recipe_evals.py checks that the regex matches its example, that the fix is
+# documented in the skills, that no skill or recipe contains the wrong form, and that the
+# answer grader rejects each wrong form.
+
+cases:
+  - id: H01
+    area: memory
+    wrong: '\bfree\s+-[bkmgh]\b'
+    example: "free -m"
+    fix: "svmon -G"
+    why: "AIX has no free; use svmon -G or vmstat -v"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H02
+    area: services
+    wrong: '\bsystemctl\s+(start|stop|restart|status|enable)\b'
+    example: "systemctl restart sshd"
+    fix: "stopsrc -s sshd"
+    why: "AIX uses the System Resource Controller, not systemd"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H03
+    area: users
+    wrong: '\b(useradd|usermod|userdel)\b'
+    example: "useradd -m jdoe"
+    fix: "mkuser"
+    why: "AIX user management is mkuser, chuser, rmuser"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H04
+    area: kernel-log
+    wrong: '\b(dmesg|journalctl)\b'
+    example: "dmesg | tail"
+    fix: "errpt"
+    why: "The AIX error log is read with errpt"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H05
+    area: tunables
+    wrong: '\bsysctl\s+-w\b'
+    example: "sysctl -w vm.swappiness=10"
+    fix: "vmo -p -o"
+    why: "Kernel tunables are vmo, ioo, schedo, no, nfso, raso"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H06
+    area: date
+    wrong: '\bdate\s+(-d|--date)\b'
+    example: 'date -d "1 hour ago" +%m%d%H%M%y'
+    fix: "perl -MPOSIX"
+    why: "AIX date has no -d; compute the timestamp with perl"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H07
+    area: library-path
+    wrong: '\bexport\s+LD_LIBRARY_PATH\b'
+    example: "export LD_LIBRARY_PATH=$ORACLE_HOME/lib"
+    fix: "LIBPATH"
+    why: "AIX uses LIBPATH"
+    source: ".agents/skills/oracle-aix/SKILL.md"
+
+  - id: H08
+    area: shared-memory
+    wrong: '\b(kernel\.shmmax|kernel\.sem|shmmax|semmsl)\b'
+    example: "sysctl -w kernel.shmmax=68719476736"
+    fix: "memory.md"
+    why: "AIX sizes shared memory and semaphores dynamically; there is no shmmax to tune"
+    source: ".agents/skills/oracle-aix/SKILL.md"
+
+  - id: H09
+    area: iostat
+    wrong: '\biostat\s+-\w*x'
+    example: "iostat -x 5"
+    fix: "iostat -D"
+    why: "iostat -x is a Linux flag; AIX uses -D for the extended disk report"
+    source: "https://www.ibm.com/docs/en/aix/7.3.0?topic=i-iostat-command"
+
+  - id: H10
+    area: mpstat
+    wrong: '\bmpstat\s+-P\b'
+    example: "mpstat -P ALL 5"
+    fix: "mpstat -s"
+    why: "mpstat -P does not exist on AIX; use -s (SMT threads) or -v (virtual processors)"
+    source: "https://www.ibm.com/docs/en/aix/7.3.0?topic=m-mpstat-command"
+
+  - id: H11
+    area: paging
+    wrong: '\bmkswap\b'
+    example: "mkswap /dev/sdb2"
+    fix: "lsps -a"
+    why: "AIX paging space is created and managed with mkps, chps, lsps"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H12
+    area: packages
+    wrong: '\b(apt-get|apt|yum|dpkg)\s+(install|update|upgrade)\b'
+    example: "yum update"
+    fix: "install_all_updates"
+    why: "Base AIX software uses installp / install_all_updates; dnf only for the AIX Toolbox"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H13
+    area: lvm
+    wrong: '\b(lvcreate|lvextend|vgcreate|vgs|pvs)\b'
+    example: "lvextend -L +10G /dev/vg/lv"
+    fix: "extendlv"
+    why: "AIX LVM commands are mklv, extendlv, mkvg, lsvg, lspv"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H14
+    area: devices
+    wrong: '\b(lspci|lsusb|lshw|udevadm)\b'
+    example: "lspci | grep -i fibre"
+    fix: "lsdev"
+    why: "AIX devices are listed with lsdev, lscfg, lsattr"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H15
+    area: sed
+    wrong: '\bsed\s+-i\b'
+    example: "sed -i 's/a/b/' file"
+    fix: "perl"
+    why: "AIX sed has no -i (edit a copy, or use perl)"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H16
+    area: grep
+    wrong: '\bgrep\s+-[A-Za-z]*P'
+    example: "grep -P '\\d+' file"
+    fix: "perl"
+    why: "AIX grep has no -P (Perl regex); use grep -E or perl"
+    source: ".agents/skills/aix/SKILL.md"
+
+  - id: H17
+    area: backup
+    wrong: '\balt_disk_copy\s+-d\s+\S+\s*$'
+    example: "alt_disk_copy -d hdisk1"
+    fix: "alt_disk_copy -B"
+    why: "Without -B the bootlist is set to the clone, so a reboot starts the OLD copy"
+    source: "https://www.ibm.com/docs/en/aix/7.3.0?topic=alt-disk-copy-command"
+
+  - id: H18
+    area: live-update
+    wrong: '\bliveupdate\b(?!\.data|\.template|/)'
+    example: "liveupdate -p"
+    fix: "geninstall -k -p"
+    why: "Live Update is not a stand-alone command; it is started by geninstall -k or NIM"
+    source: "https://www.ibm.com/docs/en/aix/7.3.0?topic=update-concepts"
+
+  - id: H19
+    area: oracle-user
+    wrong: '\bsu\s+-\s+root\s+-c\s+["'']?(sqlplus|rman|srvctl|lsnrctl|opatch)'
+    example: 'su - root -c "sqlplus / as sysdba"'
+    fix: "su - <user>"
+    why: "Oracle database tools run as the software owner (oracle, or grid), never as root"
+    source: ".agents/skills/oracle-aix/SKILL.md"
+
+  - id: H20
+    area: asm-disks
+    wrong: '\b(mkvg|extendvg)\b[^\n]*\brhdisk'
+    example: "mkvg -y asmvg /dev/rhdisk10"
+    fix: "reserve_policy=no_reserve"
+    why: "An ASM disk is a whole raw hdisk with no PVID; mkvg or extendvg corrupts the ASM disk header"
+    source: ".agents/skills/oracle-aix/best-practices/io-storage.md"

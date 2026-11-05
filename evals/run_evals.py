@@ -12,6 +12,17 @@ import sys
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# Recipe and hallucination evals (see evals/recipe_evals.py); imported so that
+# `python evals/run_evals.py` runs them too.
+from recipe_evals import (  # noqa: E402,F401
+    TestAixAccuracy,
+    TestHallucinationCases,
+    TestRecipeReferenceAnswers,
+    TestRecipeStructure,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 SKILLS = ROOT / ".agents" / "skills"
 BOB_RULES = ROOT / ".bob"

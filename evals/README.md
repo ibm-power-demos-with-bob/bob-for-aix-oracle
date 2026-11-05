@@ -4,7 +4,7 @@ This directory contains automated evaluation suites to verify the accuracy, port
 
 ## Test Suite Structure
 
-- `test_evals.py`: Automated pytest/Python test suite evaluating:
+- `run_evals.py`: entry point. Runs the skill evals below plus everything in `recipe_evals.py`:
   1. **AIX System Administration & Diagnostics**: Correct command generation (`lparstat`, `vmstat`, `svmon`, `errpt`, `vmo`, `ioo`, `no`, `schedo`, `lsvg`, `lsmpio`).
   2. **Ansible AIX Playbook Standards**: `ibm.power_aix` modules, YAML syntax, `ansible-lint` compliance, and lack of Linux-isms (`systemctl`, `date -d`, `useradd`, etc.).
   3. **Oracle on AIX / Power Systems Layout**:
@@ -14,6 +14,12 @@ This directory contains automated evaluation suites to verify the accuracy, port
      - Storage layout best practices: minimum 8 data LUNs, 8 redo LUNs, 2-4 backup LUNs, bflash/Tier 1 Flash tiering, `queue_depth` (64-256), `AU_SIZE=4M/8M`.
      - CPU & memory sizing: Power10 SMT-8 entitlement, large pages (`ORACLE_SGA_PGSZ=16m`, `vmo_lgpg_regions`), memory affinity (`AIXTHREAD_SCOPE=S`).
   4. **PowerVS Live Compatibility**: Scenario checks tailored for IBM Cloud PowerVS instance `aix-oracle01` (Power10, AIX 7.3 TL04, General-Flash-96 storage pool).
+- `recipe_evals.py`: evals for the demo recipes in [`../recipes/`](../recipes/README.md):
+  1. **Recipe structure**: required front matter, unique `R##` ids, known Bob mode, existing skills and `reads` files.
+  2. **Reference answers**: each recipe's reference answer satisfies its own `must_include` / `must_not_include` rules.
+  3. **AIX accuracy**: shell blocks in recipes and skills contain no Linux-only command and none of the known wrong forms.
+  4. **Hallucination cases**: every case in `hallucination_cases.yaml` has a regex that matches its example, a documented fix, and is rejected by the grader.
+- `hallucination_cases.yaml`: known wrong AIX command lines (`free -m`, `iostat -x`, `mpstat -P`, `alt_disk_copy` without `-B`, ...) with the AIX-native fix and its source. Add a case only when the correct form is documented.
 
 ## Running Evaluations
 
@@ -22,3 +28,15 @@ To run the complete evaluation suite:
 ```bash
 python evals/run_evals.py
 ```
+
+These evals are static: they need no LLM and no AIX host. To test a real Bob answer,
+run a recipe prompt in the matching mode, save the answer to a file, and grade it:
+
+```bash
+python evals/recipe_evals.py --prompts               # list recipe ids, modes and prompts
+python evals/recipe_evals.py --grade R04 answer.txt  # exit code 1 if the answer fails
+```
+
+The grader checks the recipe's `must_include` strings (case-insensitive), its
+`must_not_include` patterns and every hallucination case. Only code lines are scanned for
+wrong forms, so an answer may mention `systemctl` in prose to explain that AIX has none.
