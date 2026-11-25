@@ -19,6 +19,10 @@ Built for **IBM Bob**. The skills also work with other agents that read
 ```
 .agents/skills/                     # canonical skills (shared by all agents)
   aix/SKILL.md                      # AIX administration
+  lab-author/                       # create a new recipe (lab) that also enriches the evals
+    SKILL.md                        # procedure: scope, verify, scaffold, register, validate
+    lab-format.md, verified-facts.md
+    scripts/scaffold_lab.py         # skeleton generator for recipes/NN-slug.md
   ansible-aix/
     SKILL.md                        # Ansible with ibm.power_aix
     examples/*.yml                  # complete playbooks, ansible-lint production-clean
@@ -78,6 +82,7 @@ scripts/
 | `aix` | AIX administration, troubleshooting, tuning, shell automation | AIX vs Linux command map, SRC, tunables (`-L`/`-p`/`-r`), performance triage, installp/emgr/TL-SP, mksysb/alt_disk, NIM, VIOS basics |
 | `ansible-aix` | Playbooks and roles with `ibm.power_aix` | Real module and role catalogue, check-mode and idempotency rules, Python bootstrap, linted examples |
 | `oracle-aix` | Oracle Database on AIX / Power, including PowerVS (not Linux) | Safety rules, diagnosis flows, CPU/memory/I-O/network best practices, install/patch |
+| `lab-author` | Creating or extending a recipe in `recipes/` on demand | Next lab number, verified AIX facts, exact lab format, scaffold script, validation with `validate.py` and `run_evals.py` |
 
 The `oracle-aix` skill hands platform-neutral Oracle topics (SQL, PL/SQL, RMAN, Data Guard,
 AWR) to the [Oracle `db` skill](https://github.com/oracle/skills/tree/main/db) when it is

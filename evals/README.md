@@ -24,7 +24,7 @@ This directory contains automated evaluation suites to verify the accuracy, port
   2. **Reference answers**: each scenario's reference answer satisfies its own `must_include` / `must_not_include` rules.
   3. **AIX accuracy**: shell blocks in scenarios, recipes and skills contain no Linux-only command and none of the known wrong forms.
   4. **Hallucination cases**: every case in `hallucination_cases.yaml` has a regex that matches its example, a documented fix, and is rejected by the grader.
-  5. **Recipes**: five numbered recipes linked from the index, each with the same sections, a copy-and-paste `text` prompt and a goal in every step, a trap or a confirmation, English text.
+  5. **Recipes**: numbered recipes (at least five, contiguous from 01) linked from the index, each with the same sections, a copy-and-paste `text` prompt and a goal in every step, a trap or a confirmation, English text, no unfinished TODO.
   6. **Recipe steps as test cases**: every step carries an `<!-- eval -->` block (Bob mode, `must_include`, `must_not_include`). The evals check that the block is valid, that every expected string is described in the step, that the commands of the step respect the forbidden patterns, and that the grader accepts a complete answer and rejects an incomplete or Linux-flavoured one. See [`../recipes/README.md`](../recipes/README.md#automated-tests).
 - `hallucination_cases.yaml`: known wrong AIX command lines (`free -m`, `iostat -x`, `mpstat -P`, `alt_disk_copy` without `-B`, ...) with the AIX-native fix and its source. Add a case only when the correct form is documented.
 

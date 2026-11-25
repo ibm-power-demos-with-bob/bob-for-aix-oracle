@@ -355,12 +355,20 @@ class TestRecipes(unittest.TestCase):
         cls.recipes = recipe_files()
         cls.index = (RECIPES / "README.md").read_text(encoding="utf-8")
 
-    def test_five_recipes_exist_and_are_numbered_from_01(self) -> None:
-        self.assertEqual([p.name[:2] for p in self.recipes], ["01", "02", "03", "04", "05"])
+    def test_recipes_exist_and_are_numbered_contiguously_from_01(self) -> None:
+        numbers = [p.name[:2] for p in self.recipes]
+        self.assertGreaterEqual(len(numbers), 5)
+        self.assertEqual(numbers, [f"{n:02d}" for n in range(1, len(numbers) + 1)])
 
     def test_recipes_are_listed_in_the_index(self) -> None:
         for recipe in self.recipes:
             self.assertIn(f"({recipe.name})", self.index, f"{recipe.name}: not linked from recipes/README.md")
+
+    def test_recipes_have_no_unfinished_placeholders(self) -> None:
+        """A scaffolded lab (lab-author skill) must have every TODO replaced."""
+        for recipe in self.recipes:
+            for lineno, line in enumerate(recipe.read_text(encoding="utf-8").splitlines(), 1):
+                self.assertNotRegex(line, r"\bTODO\b", f"{recipe.name}:{lineno}: unfinished TODO")
 
     def test_recipe_structure(self) -> None:
         for recipe in self.recipes:
